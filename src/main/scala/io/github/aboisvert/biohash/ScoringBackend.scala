@@ -3,7 +3,8 @@
 
 package io.github.aboisvert.biohash
 
-/** Numeric kernel backend used by [[VectorOps]] and [[WeightMatrix]] scoring. */
+/** Numeric kernel backend used by [[VectorOps]] and [[WeightMatrix]] scoring.
+  */
 trait ScoringBackend:
   def name: String
   def dot(a: Array[Double], b: Array[Double]): Double
@@ -34,7 +35,8 @@ object ScoringBackend:
     finally overrideBackend = previous
 
   private def resolveFromProperty: ScoringBackend =
-    sys.props.get("biohash.backend") match
+    // use BIOHASH_BACKEND environment variable if set, or default to the system property
+    Option(sys.env.get("BIOHASH_BACKEND")) orElse sys.props.get("biohash.backend") match
       case Some("scalar") => ScalarBackend
       case Some("vector") => VectorApiBackend
       case Some("blas")   => BlasBackend
@@ -105,8 +107,7 @@ object VectorApiBackend extends ScoringBackend:
       Class.forName("jdk.incubator.vector.DoubleVector")
       Class.forName("io.github.aboisvert.biohash.VectorApiBackendImpl")
       true
-    catch
-      case _: Throwable => false
+    catch case _: Throwable => false
 
   private lazy val impl: ScoringBackend =
     Class
@@ -140,8 +141,7 @@ object BlasBackend extends ScoringBackend:
 
   def normalizeInPlaceL2(v: Array[Double]): Unit =
     val norm = pNormL2(v)
-    if norm > 0.0 then
-      blas.dscal(v.length, 1.0 / norm, v, 1)
+    if norm > 0.0 then blas.dscal(v.length, 1.0 / norm, v, 1)
 
   def scoresGemv(
       matrix: WeightMatrix,
@@ -156,5 +156,4 @@ object BlasBackend extends ScoringBackend:
         val offset = matrix.rowOffset(row)
         out(row) = blas.ddot(matrix.cols, matrix.flatData, offset, 1, x, 0, 1)
         row += 1
-    else
-      ScalarBackend.scoresGemv(matrix, x, p, out)
+    else ScalarBackend.scoresGemv(matrix, x, p, out)
