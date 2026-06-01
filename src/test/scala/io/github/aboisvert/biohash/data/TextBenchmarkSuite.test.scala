@@ -66,3 +66,46 @@ class TextBenchmarkSuite extends munit.FunSuite:
     assertEquals(loaded.corpusHashes.length, dataset.corpusSize)
     loaded.corpusHashes.foreach(hash => assertEquals(hash.k, 2))
   }
+
+  test("appendItems extends latest segment without adding segments") {
+    val dataset = TextBenchmark.load(fixtureDir, Some("mini"))
+    val config = EvalConfig(k = 2, activity = 0.5, epochs = 2, seed = 7L, normalizeInputs = true)
+    val artifactRoot = Files.createTempDirectory("biohash-text-append")
+    val trained = TextBenchmarkRunner.train(dataset, config, artifactRoot)
+    val newIds = IndexedSeq("d5")
+    val newVectors = IndexedSeq(Array(0.1, 0.9, 0.0))
+    val appendResult = TextBenchmarkRunner.appendItems(trained.artifactDir, newIds, newVectors)
+    assertEquals(appendResult.addedCount, 1)
+    assertEquals(appendResult.segmentCount, 1)
+    assertEquals(appendResult.corpusSize, dataset.corpusSize + 1)
+
+    val loaded = TextIndexArtifact.load(trained.artifactDir)
+    assertEquals(loaded.corpusIds.last, "d5")
+  }
+
+  test("improveEncoder and consolidate round-trip on fixture") {
+    val dataset = TextBenchmark.load(fixtureDir, Some("mini"))
+    val config = EvalConfig(k = 2, activity = 0.5, epochs = 2, seed = 7L, normalizeInputs = true)
+    val artifactRoot = Files.createTempDirectory("biohash-text-improve")
+    val trained = TextBenchmarkRunner.train(dataset, config, artifactRoot)
+    val newIds = IndexedSeq("d5")
+    val newVectors = IndexedSeq(Array(0.1, 0.9, 0.0))
+    val improved = TextBenchmarkRunner.improveEncoder(trained.artifactDir, newIds, newVectors)
+    assertEquals(improved.segmentCount, 2)
+    assertEquals(improved.corpusSize, dataset.corpusSize + 1)
+
+    val vectorsById =
+      dataset.corpusIds.zip(dataset.corpusVectors).toMap + ("d5" -> newVectors.head)
+    val consolidated = TextBenchmarkRunner.consolidate(trained.artifactDir, vectorsById)
+    assertEquals(consolidated.segmentCount, 1)
+    assertEquals(consolidated.corpusSize, dataset.corpusSize + 1)
+
+    val queryResult = TextBenchmarkRunner.query(
+      dataset = dataset,
+      artifactDir = trained.artifactDir,
+      retrievalLimit = 3,
+      denseBaseline = false
+    )
+    assertEquals(queryResult.segmentCount, 1)
+    assert(queryResult.metrics.ndcgAt10 >= 0.0)
+  }

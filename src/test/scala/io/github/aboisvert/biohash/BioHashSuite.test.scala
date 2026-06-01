@@ -51,3 +51,51 @@ class BioHashSuite extends munit.FunSuite:
     val h2 = bh2.encode(data(0))
     assertEquals(h1.active.toSeq, h2.active.toSeq)
   }
+
+  test("trainMiniBatch changes weights and preserves row normalization") {
+    val config = BioHashConfig.paper(inputDim = 4, m = 4, k = 2, learningRate = 0.1, seed = 5L)
+    val bh = BioHash.fromWeights(
+      config,
+      Array(
+        Array(1.0, 0.0, 0.0, 0.0),
+        Array(0.0, 1.0, 0.0, 0.0),
+        Array(0.0, 0.0, 1.0, 0.0),
+        Array(0.0, 0.0, 0.0, 1.0)
+      )
+    )
+    val before = bh.weights.map(_.clone())
+    val batch = IndexedSeq(Array(1.0, 0.5, 0.0, 0.0), Array(0.0, 1.0, 0.5, 0.0))
+    bh.trainMiniBatch(batch, epochs = 2, shuffle = false)
+    assert(!bh.weights.zip(before).forall { case (after, prior) => after.sameElements(prior) })
+    bh.weights.foreach { row =>
+      assertEqualsDouble(VectorOps.pNorm(row, 2.0), 1.0, 1e-6)
+    }
+    assertEquals(bh.currentTrainingSteps, batch.length * 2L)
+  }
+
+  test("trainMiniBatch with shuffle=false matches repeated trainStep") {
+    val config = BioHashConfig.paper(inputDim = 3, m = 4, k = 2, learningRate = 0.05, seed = 11L)
+    val batch = IndexedSeq(Array(1.0, 0.0, 0.0), Array(0.0, 1.0, 0.0))
+    val viaMiniBatch = BioHash.fromWeights(
+      config,
+      Array(
+        Array(1.0, 0.0, 0.0),
+        Array(0.0, 1.0, 0.0),
+        Array(0.0, 0.0, 1.0),
+        Array(1.0, 1.0, 0.0)
+      )
+    )
+    viaMiniBatch.trainMiniBatch(batch, epochs = 2, shuffle = false)
+    val viaSteps = BioHash.fromWeights(
+      config,
+      Array(
+        Array(1.0, 0.0, 0.0),
+        Array(0.0, 1.0, 0.0),
+        Array(0.0, 0.0, 1.0),
+        Array(1.0, 1.0, 0.0)
+      )
+    )
+    batch.foreach(v => viaSteps.trainStep(v))
+    batch.foreach(v => viaSteps.trainStep(v))
+    assert(viaMiniBatch.weights.zip(viaSteps.weights).forall { case (a, b) => a.sameElements(b) })
+  }

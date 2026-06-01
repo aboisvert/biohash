@@ -36,7 +36,7 @@ object ScoringBackend:
 
   private def resolveFromProperty: ScoringBackend =
     // use BIOHASH_BACKEND environment variable if set, or default to the system property
-    Option(sys.env.get("BIOHASH_BACKEND")) orElse sys.props.get("biohash.backend") match
+    sys.env.get("BIOHASH_BACKEND").orElse(sys.props.get("biohash.backend")) match
       case Some("scalar") => ScalarBackend
       case Some("vector") => VectorApiBackend
       case Some("blas")   => BlasBackend

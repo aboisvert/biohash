@@ -121,6 +121,19 @@ final class NaiveBioHash(val config: NaiveBioHashConfig) extends HashEncoder:
 
   def train(data: IndexedSeq[Array[Double]]): Unit = inner.train(data)
 
+  def trainMiniBatch(
+      batch: IndexedSeq[Array[Double]],
+      epochs: Int = 1,
+      shuffle: Boolean = true,
+      shuffleSeedOffset: Long = inner.currentTrainingSteps
+  ): Unit =
+    inner.trainMiniBatch(batch, epochs, shuffle, shuffleSeedOffset)
+
+  def currentTrainingSteps: Long = inner.currentTrainingSteps
+
+  /** Inner BioHash used for training and weight persistence. */
+  private[biohash] def innerBioHash: BioHash = inner
+
   /** Weight matrix used for artifact persistence. */
   def savedWeights: Array[Array[Double]] = inner.weights
 
@@ -135,7 +148,11 @@ object NaiveBioHash:
   def apply(config: NaiveBioHashConfig): NaiveBioHash = new NaiveBioHash(config)
 
   /** Restore a trained NaiveBioHash encoder from persisted weights. */
-  def fromWeights(config: NaiveBioHashConfig, weights: Array[Array[Double]]): NaiveBioHash =
+  def fromWeights(
+      config: NaiveBioHashConfig,
+      weights: Array[Array[Double]],
+      trainingSteps: Long = 0L
+  ): NaiveBioHash =
     val innerConfig = BioHashConfig.paper(
       inputDim = config.inputDim,
       m = config.k,
@@ -150,7 +167,7 @@ object NaiveBioHash:
       renormalizeWeights = config.renormalizeWeights
     )
     val nb = new NaiveBioHash(config)
-    val restored = BioHash.fromWeights(innerConfig, weights)
+    val restored = BioHash.fromWeights(innerConfig, weights, trainingSteps)
     var mu = 0
     while mu < weights.length do
       System.arraycopy(restored.weights(mu), 0, nb.savedWeights(mu), 0, config.inputDim)

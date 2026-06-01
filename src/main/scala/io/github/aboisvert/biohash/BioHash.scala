@@ -127,6 +127,7 @@ object BioHashConfig:
 final class BioHash(val config: BioHashConfig) extends HashEncoder:
 
   private val rng = Random(config.seed)
+  private var trainingSteps: Long = 0L
   private val weightMatrix: WeightMatrix = initializeWeights()
   private val scoreBuffer = new Array[Double](config.m)
   private val inputScratch = new Array[Double](config.inputDim)
@@ -177,7 +178,11 @@ final class BioHash(val config: BioHashConfig) extends HashEncoder:
     val input = preprocess(x, inputScratch)
     VectorOps.scoresMatrix(weightMatrix, input, config.p, out)
 
+  /** Number of [[trainStep]] calls executed on this encoder instance. */
+  def currentTrainingSteps: Long = trainingSteps
+
   def trainStep(x: Array[Double]): Unit =
+    require(x.length == config.inputDim, s"trainStep: expected dim ${config.inputDim}, got ${x.length}")
     val input = preprocess(x, inputScratch)
     VectorOps.scoresMatrix(weightMatrix, input, config.p, scoreBuffer)
     val ranksNeeded =
@@ -190,6 +195,7 @@ final class BioHash(val config: BioHashConfig) extends HashEncoder:
     if config.delta != 0.0 then
       val antiWinner = ranked(config.antiWinnerRank - 1)
       if antiWinner != winner then updateRow(antiWinner, input, scoreBuffer(antiWinner), gain = -config.delta)
+    trainingSteps += 1
 
   private def updateRow(mu: Int, x: Array[Double], score: Double, gain: Double): Unit =
     val offset = weightMatrix.rowOffset(mu)
@@ -201,18 +207,49 @@ final class BioHash(val config: BioHashConfig) extends HashEncoder:
       i += 1
     if config.renormalizeWeights then normalizeRow(mu)
 
+  /** Online update over a mini-batch.
+    *
+    * Shuffle order is derived from `config.seed + shuffleSeedOffset + epoch` when `shuffle = true`. Restoring weights via
+    * [[BioHash.fromWeights]] and passing the persisted step count as `shuffleSeedOffset` yields reproducible shuffles
+    * without assuming live RNG continuation across reloads.
+    */
+  def trainMiniBatch(
+      batch: IndexedSeq[Array[Double]],
+      epochs: Int = 1,
+      shuffle: Boolean = true,
+      shuffleSeedOffset: Long = trainingSteps
+  ): Unit =
+    require(epochs >= 0, "trainMiniBatch: epochs must be >= 0")
+    batch.foreach(v =>
+      require(v.length == config.inputDim, s"trainMiniBatch: expected dim ${config.inputDim}, got ${v.length}")
+    )
+    runTrainingPasses(batch, epochs, shuffle, shuffleSeedOffset, shuffleRng = None)
+
   def train(data: IndexedSeq[Array[Double]]): Unit =
+    runTrainingPasses(data, config.epochs, shuffle = true, shuffleSeedOffset = 0L, shuffleRng = Some(rng))
+
+  private def runTrainingPasses(
+      data: IndexedSeq[Array[Double]],
+      epochs: Int,
+      shuffle: Boolean,
+      shuffleSeedOffset: Long,
+      shuffleRng: Option[Random]
+  ): Unit =
+    if data.isEmpty || epochs == 0 then return
     val order = Array.tabulate(data.length)(identity)
     var epoch = 0
-    while epoch < config.epochs do
-      shuffleIndices(order)
+    while epoch < epochs do
+      if shuffle then
+        shuffleRng match
+          case Some(r) => shuffleIndices(order, r)
+          case None    => shuffleIndices(order, Random(config.seed + shuffleSeedOffset + epoch))
       var i = 0
       while i < order.length do
         trainStep(data(order(i)))
         i += 1
       epoch += 1
 
-  private def shuffleIndices(order: Array[Int]): Unit =
+  private def shuffleIndices(order: Array[Int], rng: Random): Unit =
     var i = order.length - 1
     while i > 0 do
       val j = rng.nextInt(i + 1)
@@ -231,9 +268,14 @@ object BioHash:
   def apply(config: BioHashConfig): BioHash = new BioHash(config)
 
   /** Restore a trained encoder from persisted weights. */
-  def fromWeights(config: BioHashConfig, weights: Array[Array[Double]]): BioHash =
+  def fromWeights(
+      config: BioHashConfig,
+      weights: Array[Array[Double]],
+      trainingSteps: Long = 0L
+  ): BioHash =
     require(weights.length == config.m, "BioHash.fromWeights: row count must match m")
     require(weights.forall(_.length == config.inputDim), "BioHash.fromWeights: column count must match inputDim")
     val bh = new BioHash(config)
     bh.weightMatrix.copyFromNested(weights)
+    bh.trainingSteps = trainingSteps
     bh
