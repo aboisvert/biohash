@@ -1,3 +1,6 @@
+// Copyright (c) Alex Boisvert, 2026
+// SPDX-License-Identifier: Apache-2.0
+
 package biohash.eval
 
 /** Information-retrieval metrics for qrels-based text benchmarks. */

@@ -75,6 +75,37 @@ eval-ann $dataset="sift10k" $k="8" $epochs="3" *$extra="":
     epochs="${epochs#epochs=}"
     exec scala-cli run . --main-class biohash.evalAnn -- --dataset "$dataset" --k "$k" --epochs "$epochs" ${extra:-}
 
+# Synthetic text retrieval benchmark (in-memory)
+eval-synthetic-text $method="biohash" $k="8" $epochs="3" *$extra="":
+    #!/usr/bin/env sh
+    set -eu
+    method="${method#method=}"
+    k="${k#k=}"
+    epochs="${epochs#epochs=}"
+    exec scala-cli run . --main-class biohash.evalSyntheticText -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
+
+# Prepare SciFact BEIR embeddings (requires Python + sentence-transformers)
+prepare-text-scifact *$extra="":
+    python scripts/prepare_beir_embeddings.py --dataset scifact ${extra:-}
+
+# Train BioHash on SciFact corpus embeddings
+train-text-scifact $method="biohash" $k="32" $epochs="3" *$extra="":
+    #!/usr/bin/env sh
+    set -eu
+    method="${method#method=}"
+    k="${k#k=}"
+    epochs="${epochs#epochs=}"
+    exec scala-cli run . --main-class biohash.trainTextBenchmark -- --dataset scifact --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
+
+# Query SciFact benchmark against trained artifact
+query-text-scifact $method="biohash" $k="32" $epochs="3" *$extra="":
+    #!/usr/bin/env sh
+    set -eu
+    method="${method#method=}"
+    k="${k#k=}"
+    epochs="${epochs#epochs=}"
+    exec scala-cli run . --main-class biohash.queryTextBenchmark -- --dataset scifact --method "$method" --k "$k" --epochs "$epochs" --dense-baseline true ${extra:-}
+
 # ── Dataset downloads ────────────────────────────────────────────────────────
 
 # Download MNIST IDX gzip files into data/mnist/

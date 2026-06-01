@@ -1,3 +1,6 @@
+<!-- Copyright (c) Alex Boisvert, 2026 -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # biohash
 
 Scala implementation of **BioHash** — bio-inspired locality-sensitive hashing for unsupervised similarity search ([Ryali et al., ICML 2020](docs/biohash-ryali20a.md)).
@@ -9,6 +12,7 @@ Scala implementation of **BioHash** — bio-inspired locality-sensitive hashing 
 - **NaiveBioHash** ablation: dense k-unit learning + sign binarization
 - Sparse active-index hash storage with O(k) Hamming distance
 - mAP evaluation (MNIST, CIFAR-10, Fashion-MNIST) and recall@R (SIFT/GIST ANN benchmarks)
+- Real-world text retrieval benchmark (BEIR-style corpus with train/query split)
 - MUnit test suite and JMH microbenchmarks
 
 ## Build & Test
@@ -43,6 +47,14 @@ scala-cli run . --main-class biohash.evalCifar -- --k 2
 
 # ANN benchmarks (SIFT/GIST — see data/README.md)
 scala-cli run . --main-class biohash.evalAnn -- --dataset sift10k --k 8
+
+# Synthetic text retrieval (in-memory clustered embeddings)
+scala-cli run . --main-class biohash.evalSyntheticText -- --method biohash --k 8
+
+# Real-world text benchmark (BEIR-style — see data/README.md)
+python scripts/prepare_beir_embeddings.py --dataset scifact
+scala-cli run . --main-class biohash.trainTextBenchmark -- --dataset scifact --method biohash --k 32
+scala-cli run . --main-class biohash.queryTextBenchmark -- --dataset scifact --dense-baseline true
 ```
 
 ## JMH Benchmarks
@@ -63,8 +75,10 @@ src/main/scala/biohash/
   SparseHash.scala    # sparse codes + Hamming distance
   Retrieval.scala     # top-R retrieval
   Metrics.scala       # mAP, recall@R
-  data/               # dataset loaders (MNIST, CIFAR, ANN)
+  data/               # dataset loaders (MNIST, CIFAR, ANN, text)
   eval/               # evaluation harness
+scripts/
+  prepare_beir_embeddings.py  # optional BEIR embedding preparation
 bench/
   BioHashJmh.scala    # JMH microbenchmarks
 docs/
@@ -74,3 +88,9 @@ docs/
 ## Algorithm Reference
 
 See [docs/biohash-ryali20a.md](docs/biohash-ryali20a.md) for notation, learning rule, hyperparameters, and evaluation protocol.
+
+## License
+
+Copyright (c) Alex Boisvert, 2026.
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full license text.

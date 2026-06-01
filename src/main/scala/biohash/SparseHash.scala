@@ -1,3 +1,6 @@
+// Copyright (c) Alex Boisvert, 2026
+// SPDX-License-Identifier: Apache-2.0
+
 package biohash
 
 /** Sparse binary hash storing sorted indices of active (+1) bits. */

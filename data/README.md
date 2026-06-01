@@ -48,3 +48,41 @@ Use `--dataset sift1m` for the full 1M-vector set.
 ## VGG16 fc7 Features (optional)
 
 For paper-comparable CIFAR-10 results on deep features, place pre-extracted features at `data/cifar10-vgg-fc7.csv` (label in last column) or a custom binary format loadable via `Cifar10.loadVggFc7Features`.
+
+## Text Retrieval Benchmark (BEIR-style)
+
+Real-world text evaluation uses precomputed dense embeddings plus BEIR qrels. BioHash is trained on the corpus once, persisted as a binary hash index, and queried separately.
+
+Prepare a dataset (SciFact is the quick smoke benchmark):
+
+```sh
+python scripts/prepare_beir_embeddings.py --dataset scifact
+```
+
+Expected layout under `data/text/<dataset>/`:
+
+- `corpus.jsonl`, `queries.jsonl` — raw BEIR text (optional for validation)
+- `qrels/test.tsv` — query-id, corpus-id, score
+- `corpus.fvecs`, `query.fvecs` — float32 TEXMEX-style vectors
+- `corpus.ids`, `query.ids` — one external id per vector row
+- `manifest.properties` — embedding model metadata
+
+Train and query:
+
+```sh
+just prepare-text-scifact
+just train-text-scifact
+just query-text-scifact
+```
+
+Defaults: `k=32`, `activity=0.01`, `epochs=3`, `normalizeInputs=true`, `retrievalLimit=100`.
+
+Query output reports `nDCG@10`, `MAP@100`, `Recall@10`, `Recall@100`, query latency, artifact size, and an optional dense cosine baseline on smaller corpora.
+
+For a larger benchmark after SciFact smoke tests, rerun preparation with another BEIR dataset such as `fiqa` or `quora`:
+
+```sh
+python scripts/prepare_beir_embeddings.py --dataset fiqa
+scala-cli run . --main-class biohash.trainTextBenchmark -- --dataset fiqa
+scala-cli run . --main-class biohash.queryTextBenchmark -- --dataset fiqa --dense-baseline true
+```
