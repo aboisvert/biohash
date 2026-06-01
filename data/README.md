@@ -83,6 +83,6 @@ For a larger benchmark after SciFact smoke tests, rerun preparation with another
 
 ```sh
 python scripts/prepare_beir_embeddings.py --dataset fiqa
-scala-cli run . --main-class biohash.trainTextBenchmark -- --dataset fiqa
-scala-cli run . --main-class biohash.queryTextBenchmark -- --dataset fiqa --dense-baseline true
+scala-cli run . --main-class io.github.aboisvert.biohash.trainTextBenchmark -- --dataset fiqa
+scala-cli run . --main-class io.github.aboisvert.biohash.queryTextBenchmark -- --dataset fiqa --dense-baseline true
 ```

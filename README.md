@@ -1,6 +1,3 @@
-<!-- Copyright (c) Alex Boisvert, 2026 -->
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-
 # biohash
 
 Scala implementation of **BioHash** — bio-inspired locality-sensitive hashing for unsupervised similarity search ([Ryali et al., ICML 2020](docs/biohash-ryali20a.md)).
@@ -66,7 +63,7 @@ scala-cli --jmh . -- -i 3 -wi 3 -f1 BioHashJmh
 ## Project Layout
 
 ```
-src/main/scala/biohash/
+src/main/scala/io/github/aboisvert/biohash/
   BioHash.scala       # core learning + encoding
   FlyHash.scala       # random projection baseline
   NaiveBioHash.scala  # ablation baseline

@@ -1,10 +1,10 @@
 // Copyright (c) Alex Boisvert, 2026
 // SPDX-License-Identifier: Apache-2.0
 
-package biohash.bench
+package io.github.aboisvert.biohash.bench
 
-import biohash.*
-import biohash.data.Synthetic
+import io.github.aboisvert.biohash.*
+import io.github.aboisvert.biohash.data.Synthetic
 import java.util.concurrent.TimeUnit
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole

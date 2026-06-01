@@ -181,11 +181,11 @@ def main() -> int:
     print(f"Wrote benchmark files to {out_dir}")
     print("Next steps:")
     print(
-        "  scala-cli run . --main-class biohash.trainTextBenchmark -- "
+        "  scala-cli run . --main-class io.github.aboisvert.biohash.trainTextBenchmark -- "
         f"--dataset {args.dataset}"
     )
     print(
-        "  scala-cli run . --main-class biohash.queryTextBenchmark -- "
+        "  scala-cli run . --main-class io.github.aboisvert.biohash.queryTextBenchmark -- "
         f"--dataset {args.dataset} --dense-baseline true"
     )
     return 0

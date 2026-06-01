@@ -14,11 +14,11 @@ test:
 
 # List available Scala CLI subcommands
 run:
-    scala-cli run . --main-class biohash.run
+    scala-cli run . --main-class io.github.aboisvert.biohash.run
 
 # Runtime microbenchmarks (non-JMH)
 microbench:
-    scala-cli run . --main-class biohash.microbench
+    scala-cli run . --main-class io.github.aboisvert.biohash.microbench
 
 # JMH microbenchmarks
 jmh *args="-i 3 -wi 3 -f1 BioHashJmh":
@@ -33,7 +33,7 @@ eval-mnist $method="biohash" $k="2" $epochs="5" *$extra="":
     method="${method#method=}"
     k="${k#k=}"
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class biohash.evalMnist -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.evalMnist -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
 
 # Sweep hash lengths on MNIST
 sweep-mnist $method="biohash" $ks="2,4,8,16" $epochs="5" *$extra="":
@@ -42,7 +42,7 @@ sweep-mnist $method="biohash" $ks="2,4,8,16" $epochs="5" *$extra="":
     method="${method#method=}"
     ks="${ks#ks=}"
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class biohash.sweepMnist -- --method "$method" --ks "$ks" --epochs "$epochs" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.sweepMnist -- --method "$method" --ks "$ks" --epochs "$epochs" ${extra:-}
 
 # FlyHash baseline on MNIST
 eval-flyhash k="2" *extra="":
@@ -55,7 +55,7 @@ eval-fashion $method="biohash" $k="2" $epochs="5" *$extra="":
     method="${method#method=}"
     k="${k#k=}"
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class biohash.evalFashion -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.evalFashion -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
 
 # Evaluate on CIFAR-10 (requires data/cifar-10-batches-bin)
 eval-cifar $method="biohash" $k="2" $epochs="5" *$extra="":
@@ -64,7 +64,7 @@ eval-cifar $method="biohash" $k="2" $epochs="5" *$extra="":
     method="${method#method=}"
     k="${k#k=}"
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class biohash.evalCifar -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.evalCifar -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
 
 # ANN benchmarks on SIFT/GIST (requires data/ann — run `just download-sift10k` or `just download-sift`)
 eval-ann $dataset="sift10k" $k="8" $epochs="3" *$extra="":
@@ -73,7 +73,7 @@ eval-ann $dataset="sift10k" $k="8" $epochs="3" *$extra="":
     dataset="${dataset#dataset=}"
     k="${k#k=}"
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class biohash.evalAnn -- --dataset "$dataset" --k "$k" --epochs "$epochs" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.evalAnn -- --dataset "$dataset" --k "$k" --epochs "$epochs" ${extra:-}
 
 # Synthetic text retrieval benchmark (in-memory)
 eval-synthetic-text $method="biohash" $k="8" $epochs="3" *$extra="":
@@ -82,7 +82,7 @@ eval-synthetic-text $method="biohash" $k="8" $epochs="3" *$extra="":
     method="${method#method=}"
     k="${k#k=}"
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class biohash.evalSyntheticText -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.evalSyntheticText -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
 
 # Prepare SciFact BEIR embeddings (requires Python + sentence-transformers)
 prepare-text-scifact *$extra="":
@@ -95,7 +95,7 @@ train-text-scifact $method="biohash" $k="32" $epochs="3" *$extra="":
     method="${method#method=}"
     k="${k#k=}"
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class biohash.trainTextBenchmark -- --dataset scifact --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.trainTextBenchmark -- --dataset scifact --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
 
 # Query SciFact benchmark against trained artifact
 query-text-scifact $method="biohash" $k="32" $epochs="3" *$extra="":
@@ -104,7 +104,7 @@ query-text-scifact $method="biohash" $k="32" $epochs="3" *$extra="":
     method="${method#method=}"
     k="${k#k=}"
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class biohash.queryTextBenchmark -- --dataset scifact --method "$method" --k "$k" --epochs "$epochs" --dense-baseline true ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.queryTextBenchmark -- --dataset scifact --method "$method" --k "$k" --epochs "$epochs" --dense-baseline true ${extra:-}
 
 # ── Dataset downloads ────────────────────────────────────────────────────────
 
