@@ -54,6 +54,8 @@ scala-cli run . --main-class biohash.trainTextBenchmark -- --dataset scifact --m
 scala-cli run . --main-class biohash.queryTextBenchmark -- --dataset scifact --dense-baseline true
 ```
 
+For programmatic use (training encoders, building a hash index, top-k retrieval), see [docs/how-to-use.md](docs/how-to-use.md).
+
 ### Incremental text index updates
 
 Text benchmark artifacts support **append**, **improve encoder**, and **consolidate** operations for growing the corpus without always re-hashing everything. See [docs/incremental-index-updates.md](docs/incremental-index-updates.md) for design rationale, on-disk format, query semantics, tradeoffs, and API details.
@@ -89,6 +91,7 @@ scripts/
 bench/
   BioHashJmh.scala    # JMH microbenchmarks
 docs/
+  how-to-use.md       # training, indexing, top-k retrieval
   biohash-ryali20a.md # algorithm reference
 ```
 
