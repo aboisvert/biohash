@@ -1,0 +1,10 @@
+.bsp/
+.scala-build/
+.metals/
+.bloop/
+target/
+.DS_Store
+data/mnist/
+data/fashion-mnist/
+data/cifar-10-batches-bin/
+data/ann/
