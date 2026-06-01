@@ -1,4 +1,4 @@
-//> using scala 3.7.3
+//> using scala 3.8.3
 //> using jvm 25
 //> using javaOpt --add-modules=jdk.incubator.vector
 //> using dep org.scalameta::munit::1.3.1
