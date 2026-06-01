@@ -60,6 +60,10 @@ scala-cli run . --main-class biohash.queryTextBenchmark -- --dataset scifact --d
 scala-cli --jmh . -- -i 3 -wi 3 -f1 BioHashJmh
 ```
 
+On Apple M4 Pro with JDK 25, the Vector API scoring backend runs `scoresGemv` at about **222.2 µs/op** — roughly **2.10×** faster 
+than the scalar backend (466.0 µs/op). BLAS is slower in the current per-row `ddot` implementation (557.1 µs/op). 
+See [docs/scoring-backend-report.md](docs/scoring-backend-report.md) for methodology, environment, and full numbers.
+
 ## Project Layout
 
 ```
