@@ -2,8 +2,12 @@
 .scala-build/
 .metals/
 .bloop/
-target/
+.cursor/
+.vscode/
 .DS_Store
+
+target/
+
 data/mnist/
 data/fashion-mnist/
 data/cifar-10-batches-bin/
