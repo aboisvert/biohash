@@ -23,7 +23,9 @@ object TextRetrievalMetrics:
     if evaluated.isEmpty then MetricSet(0.0, 0.0, 0.0, 0.0)
     else
       val ndcg = evaluated.map { case (relevant, retrieved) => ndcgAt(retrieved, relevant, 10) }.sum / evaluated.length
-      val map = evaluated.map { case (relevant, retrieved) => averagePrecisionAt(retrieved, relevant, 100) }.sum / evaluated.length
+      val map = evaluated.map { case (relevant, retrieved) =>
+        averagePrecisionAt(retrieved, relevant, 100)
+      }.sum / evaluated.length
       val recall10 = macroRecallAt(evaluated, 10)
       val recall100 = macroRecallAt(evaluated, 100)
       MetricSet(ndcg, map, recall10, recall100)

@@ -8,6 +8,10 @@ default:
 
 # ── Build & Test ─────────────────────────────────────────────────────────────
 
+# Format all Scala source files
+fmt:
+    scala-cli fmt .
+
 # Run the MUnit test suite
 test:
     scala-cli test .

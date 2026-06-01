@@ -50,7 +50,6 @@ object IdxReader:
     val raw = Files.newInputStream(path)
     val buffered = new BufferedInputStream(raw)
     val input =
-      if path.getFileName.toString.endsWith(".gz") then
-        new DataInputStream(new GZIPInputStream(buffered))
+      if path.getFileName.toString.endsWith(".gz") then new DataInputStream(new GZIPInputStream(buffered))
       else new DataInputStream(buffered)
     input

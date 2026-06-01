@@ -73,5 +73,4 @@ object VectorApiBackendImpl extends ScoringBackend:
           col += 1
         out(row) = sum
         row += 1
-    else
-      ScalarBackend.scoresGemv(matrix, x, p, out)
+    else ScalarBackend.scoresGemv(matrix, x, p, out)

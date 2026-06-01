@@ -10,7 +10,7 @@ class RetrievalSuite extends munit.FunSuite:
     val db = IndexedSeq(
       SparseHash(Array(2, 3), 2), // distance 4
       SparseHash(Array(0, 2), 2), // distance 2
-      SparseHash(Array(0, 1), 2)  // distance 0
+      SparseHash(Array(0, 1), 2) // distance 0
     )
     val results = Retrieval.retrieveTopR(query, db, 2)
     assertEquals(results.map(_.index).toSeq, Seq(2, 1))

@@ -80,15 +80,17 @@ object TextBenchmark:
     val lines = Files.readAllLines(path).asScala.toIndexedSeq
     require(lines.nonEmpty, s"qrels file is empty: $path")
     val body = if lines.head.toLowerCase.contains("query") then lines.drop(1) else lines
-    val grouped = body.flatMap { line =>
-      val parts = line.trim.split("\t")
-      if parts.length >= 3 then
-        val queryId = parts(0).trim
-        val corpusId = parts(1).trim
-        val score = parts(2).trim.toInt
-        if score > 0 then Some((queryId, corpusId, score)) else None
-      else None
-    }.groupMap(_._1)(row => row._2 -> row._3)
+    val grouped = body
+      .flatMap { line =>
+        val parts = line.trim.split("\t")
+        if parts.length >= 3 then
+          val queryId = parts(0).trim
+          val corpusId = parts(1).trim
+          val score = parts(2).trim.toInt
+          if score > 0 then Some((queryId, corpusId, score)) else None
+        else None
+      }
+      .groupMap(_._1)(row => row._2 -> row._3)
 
     grouped.view.mapValues { entries =>
       entries.map { case (docId, score) => docId -> score }.toMap
@@ -97,7 +99,9 @@ object TextBenchmark:
   private def readEmbeddingModel(dir: Path): String =
     val manifest = dir.resolve("manifest.properties")
     if Files.exists(manifest) then
-      Files.readAllLines(manifest).asScala
+      Files
+        .readAllLines(manifest)
+        .asScala
         .collectFirst:
           case line if line.startsWith("embeddingModel=") => line.stripPrefix("embeddingModel=").trim
         .getOrElse("unknown")

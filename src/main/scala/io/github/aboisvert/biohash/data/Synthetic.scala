@@ -55,8 +55,8 @@ object Synthetic:
 
   /** Synthetic passage/query retrieval split inspired by LLM embedding search.
     *
-    * Passages are clustered by topic with optional subclusters; queries are noisy
-    * paraphrases of randomly chosen passages. Relevance is defined by shared topic id.
+    * Passages are clustered by topic with optional subclusters; queries are noisy paraphrases of randomly chosen
+    * passages. Relevance is defined by shared topic id.
     */
   def textRetrievalSplit(config: TextRetrievalConfig): RetrievalSplit =
     val centroidRng = Random(config.seed)

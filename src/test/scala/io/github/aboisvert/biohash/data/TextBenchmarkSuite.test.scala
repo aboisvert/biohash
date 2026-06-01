@@ -57,7 +57,8 @@ class TextBenchmarkSuite extends munit.FunSuite:
 
   test("artifact save/load preserves corpus hashes") {
     val dataset = TextBenchmark.load(fixtureDir, Some("mini"))
-    val config = EvalConfig(k = 2, activity = 0.5, epochs = 1, seed = 3L, normalizeInputs = true, method = HashMethod.FlyHash)
+    val config =
+      EvalConfig(k = 2, activity = 0.5, epochs = 1, seed = 3L, normalizeInputs = true, method = HashMethod.FlyHash)
     val artifactRoot = Files.createTempDirectory("biohash-text-artifacts-fly")
     val trained = TextBenchmarkRunner.train(dataset, config, artifactRoot)
     val loaded = TextIndexArtifact.load(trained.artifactDir)

@@ -39,7 +39,8 @@ object Main:
 
   private def requireKnown(options: CliOptions, allowed: Set[String]): Unit =
     val unknown = options.values.keySet.diff(allowed)
-    if unknown.nonEmpty then throw IllegalArgumentException(s"Unknown option(s): ${unknown.toSeq.sorted.mkString(", ")}")
+    if unknown.nonEmpty then
+      throw IllegalArgumentException(s"Unknown option(s): ${unknown.toSeq.sorted.mkString(", ")}")
 
   private def requireMaxPositionals(options: CliOptions, max: Int): Unit =
     if options.positionals.length > max then
@@ -59,10 +60,10 @@ object Main:
 
   def parseMethod(name: String): HashMethod =
     name.toLowerCase match
-      case "biohash"       => HashMethod.BioHash
-      case "flyhash"       => HashMethod.FlyHash
-      case "naivebiohash"  => HashMethod.NaiveBioHash
-      case other           => throw IllegalArgumentException(s"Unknown method: $other")
+      case "biohash"      => HashMethod.BioHash
+      case "flyhash"      => HashMethod.FlyHash
+      case "naivebiohash" => HashMethod.NaiveBioHash
+      case other          => throw IllegalArgumentException(s"Unknown method: $other")
 
   def parseKs(spec: String): Seq[Int] =
     spec.split(",").map(_.trim.toInt).toSeq

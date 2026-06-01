@@ -11,10 +11,15 @@ class IdxReaderSuite extends FunSuite:
   test("readImages and readLabels from generated IDX files") {
     val dir = Files.createTempDirectory("biohash-idx")
     try
-      writeMiniIdxImages(dir.resolve("images-idx3-ubyte"), rows = 2, cols = 2, pixels = Array(
-        Array(0, 255, 128, 64),
-        Array(10, 20, 30, 40)
-      ))
+      writeMiniIdxImages(
+        dir.resolve("images-idx3-ubyte"),
+        rows = 2,
+        cols = 2,
+        pixels = Array(
+          Array(0, 255, 128, 64),
+          Array(10, 20, 30, 40)
+        )
+      )
       writeMiniIdxLabels(dir.resolve("labels-idx1-ubyte"), labels = Array(3, 7))
 
       val images = IdxReader.readImages(dir.resolve("images-idx3-ubyte"))
@@ -24,8 +29,7 @@ class IdxReaderSuite extends FunSuite:
 
       val lbls = IdxReader.readLabels(dir.resolve("labels-idx1-ubyte"))
       assertEquals(lbls.toSeq, Seq(3, 7))
-    finally
-      Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
+    finally Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
   }
 
   private def writeMiniIdxImages(path: java.nio.file.Path, rows: Int, cols: Int, pixels: Array[Array[Int]]): Unit =

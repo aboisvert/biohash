@@ -7,21 +7,31 @@ import scala.util.Random
 
 /** Configuration for [[BioHash]] training and encoding.
   *
-  * BioHash expands inputs to `m` hidden units, learns weight rows online with
-  * Hebbian/anti-Hebbian updates, and encodes each item via k-WTA sparsification
-  * (exactly `k` active bits). Activity fraction is `k / m`.
+  * BioHash expands inputs to `m` hidden units, learns weight rows online with Hebbian/anti-Hebbian updates, and encodes
+  * each item via k-WTA sparsification (exactly `k` active bits). Activity fraction is `k / m`.
   *
-  * @param inputDim expected length of input feature vectors (paper: `d`)
-  * @param m hash layer width, i.e. number of hidden units (paper: `m`)
-  * @param k hash length: number of active +1 bits per code (paper: `k`)
-  * @param p exponent for weight normalization and scoring metric (paper: `p`; `p = 2` → dot product)
-  * @param learningRate step size for online weight updates
-  * @param epochs number of full passes over the training set
-  * @param antiWinnerRank 1-indexed rank of the anti-winner unit (paper: `r`; receives gain `-delta`)
-  * @param delta anti-Hebbian strength for the anti-winner (paper: `Δ`; `0` disables repulsive updates)
-  * @param seed random seed for weight initialization and training shuffle order
-  * @param normalizeInputs whether to L2-normalize inputs before scoring and learning
-  * @param renormalizeWeights whether to project updated weight rows back to unit p-norm
+  * @param inputDim
+  *   expected length of input feature vectors (paper: `d`)
+  * @param m
+  *   hash layer width, i.e. number of hidden units (paper: `m`)
+  * @param k
+  *   hash length: number of active +1 bits per code (paper: `k`)
+  * @param p
+  *   exponent for weight normalization and scoring metric (paper: `p`; `p = 2` → dot product)
+  * @param learningRate
+  *   step size for online weight updates
+  * @param epochs
+  *   number of full passes over the training set
+  * @param antiWinnerRank
+  *   1-indexed rank of the anti-winner unit (paper: `r`; receives gain `-delta`)
+  * @param delta
+  *   anti-Hebbian strength for the anti-winner (paper: `Δ`; `0` disables repulsive updates)
+  * @param seed
+  *   random seed for weight initialization and training shuffle order
+  * @param normalizeInputs
+  *   whether to L2-normalize inputs before scoring and learning
+  * @param renormalizeWeights
+  *   whether to project updated weight rows back to unit p-norm
   */
 final case class BioHashConfig private (
     inputDim: Int,
@@ -179,8 +189,7 @@ final class BioHash(val config: BioHashConfig) extends HashEncoder:
 
     if config.delta != 0.0 then
       val antiWinner = ranked(config.antiWinnerRank - 1)
-      if antiWinner != winner then
-        updateRow(antiWinner, input, scoreBuffer(antiWinner), gain = -config.delta)
+      if antiWinner != winner then updateRow(antiWinner, input, scoreBuffer(antiWinner), gain = -config.delta)
 
   private def updateRow(mu: Int, x: Array[Double], score: Double, gain: Double): Unit =
     val offset = weightMatrix.rowOffset(mu)

@@ -17,8 +17,7 @@ class AnnBenchmarksSuite extends FunSuite:
       assertEquals(vecs.length, 2)
       assertEqualsDouble(vecs(0)(0), 1.0, 1e-6)
       assertEqualsDouble(vecs(1)(1), 4.0, 1e-6)
-    finally
-      Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
+    finally Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
   }
 
   test("readIvecs round-trip") {
@@ -28,8 +27,7 @@ class AnnBenchmarksSuite extends FunSuite:
       writeIvecs(path, Array(Array(10, 20), Array(30, 40)))
       val vecs = AnnBenchmarks.readIvecs(path)
       assertEquals(vecs(0).toSeq, Seq(10, 20))
-    finally
-      Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
+    finally Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
   }
 
   test("loadSift10K reads siftsmall fvecs subdirectory") {
@@ -45,8 +43,7 @@ class AnnBenchmarksSuite extends FunSuite:
       assertEquals(ann.queries.length, 1)
       assertEquals(ann.groundTruth(0), IndexedSeq(0, 1))
       assertEqualsDouble(ann.database(1)(1), 4.0, 1e-6)
-    finally
-      Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
+    finally Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete)
   }
 
   private def writeLEInt(out: java.io.OutputStream, value: Int): Unit =

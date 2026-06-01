@@ -18,8 +18,7 @@ object VectorOps:
         sum += math.abs(v(i))
         i += 1
       sum
-    else if p == 2.0 then
-      backend.pNormL2(v)
+    else if p == 2.0 then backend.pNormL2(v)
     else
       var sum = 0.0
       var i = 0

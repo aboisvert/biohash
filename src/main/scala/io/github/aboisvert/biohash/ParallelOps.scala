@@ -14,7 +14,6 @@ object ParallelOps:
     else
       val futures: IndexedSeq[Future[B]] = items.map { item =>
         executor.submit(new Callable[B]:
-          def call(): B = f(item)
-        )
+          def call(): B = f(item))
       }
       futures.map(_.get()).toIndexedSeq

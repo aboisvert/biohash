@@ -40,7 +40,7 @@ object AnnBenchmarks:
       var continue = true
       while continue && maxRecords.forall(count < _) do
         readDim(stream) match
-          case None => continue = false
+          case None      => continue = false
           case Some(dim) =>
             val row = new Array[Int](dim)
             var i = 0
@@ -63,7 +63,7 @@ object AnnBenchmarks:
       var continue = true
       while continue && maxRecords.forall(count < _) do
         readDim(stream) match
-          case None => continue = false
+          case None      => continue = false
           case Some(dim) =>
             val row = new Array[Double](dim)
             var i = 0
@@ -95,8 +95,7 @@ object AnnBenchmarks:
     AnnDataset(
       database = readFvecs(small.resolve("siftsmall_base.fvecs")),
       queries = readFvecs(small.resolve("siftsmall_query.fvecs")),
-      groundTruth =
-        readIvecs(small.resolve("siftsmall_groundtruth.ivecs")).map(_.toIndexedSeq),
+      groundTruth = readIvecs(small.resolve("siftsmall_groundtruth.ivecs")).map(_.toIndexedSeq),
       name = "sift10k"
     )
 

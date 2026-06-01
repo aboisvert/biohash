@@ -43,9 +43,9 @@ object TextBenchmarkRunner:
     val trainStart = System.nanoTime()
     val encoder = buildEncoder(config, inputDim, m)
     encoder match
-      case bh: BioHash       => bh.train(dataset.corpusVectors)
-      case nb: NaiveBioHash  => nb.train(dataset.corpusVectors)
-      case _: FlyHash        => ()
+      case bh: BioHash      => bh.train(dataset.corpusVectors)
+      case nb: NaiveBioHash => nb.train(dataset.corpusVectors)
+      case _: FlyHash       => ()
     val trainSeconds = (System.nanoTime() - trainStart) / 1e9
 
     val encodeStart = System.nanoTime()
@@ -114,8 +114,7 @@ object TextBenchmarkRunner:
     val querySeconds = (System.nanoTime() - queryStart) / 1e9
 
     val denseMetrics =
-      if denseBaseline && dataset.corpusSize <= 250000 then
-        Some(runDenseBaseline(dataset, retrievalLimit))
+      if denseBaseline && dataset.corpusSize <= 250000 then Some(runDenseBaseline(dataset, retrievalLimit))
       else None
 
     val denseBytes = denseVectorBytes(dataset.corpusVectors)
@@ -208,13 +207,16 @@ object TextBenchmarkRunner:
     val corpus = dataset.corpusVectors
     val normalizedCorpus = corpus.map(VectorOps.l2NormalizeInput)
     val queryIdsWithQrels = dataset.queryIds.filter(dataset.qrels.contains)
-    val retrievedDocIds = dataset.queryIds.zip(dataset.queryVectors).collect {
-      case (qid, vector) if dataset.qrels.contains(qid) =>
-        val query = VectorOps.l2NormalizeInput(vector)
-        normalizedCorpus.zipWithIndex
-          .map { case (doc, idx) => (VectorOps.dot(query, doc), idx) }
-          .sortBy { case (score, idx) => (-score, idx) }
-          .take(retrievalLimit)
-          .map { case (_, idx) => dataset.corpusIds(idx) }
-    }.toIndexedSeq
+    val retrievedDocIds = dataset.queryIds
+      .zip(dataset.queryVectors)
+      .collect {
+        case (qid, vector) if dataset.qrels.contains(qid) =>
+          val query = VectorOps.l2NormalizeInput(vector)
+          normalizedCorpus.zipWithIndex
+            .map { case (doc, idx) => (VectorOps.dot(query, doc), idx) }
+            .sortBy { case (score, idx) => (-score, idx) }
+            .take(retrievalLimit)
+            .map { case (_, idx) => dataset.corpusIds(idx) }
+      }
+      .toIndexedSeq
     TextRetrievalMetrics.evaluate(retrievedDocIds, queryIdsWithQrels, dataset.qrels)

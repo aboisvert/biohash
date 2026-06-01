@@ -4,7 +4,14 @@
 package io.github.aboisvert.biohash.eval
 
 import io.github.aboisvert.biohash.*
-import java.io.{BufferedInputStream, BufferedOutputStream, DataInputStream, DataOutputStream, FileInputStream, FileOutputStream}
+import java.io.{
+  BufferedInputStream,
+  BufferedOutputStream,
+  DataInputStream,
+  DataOutputStream,
+  FileInputStream,
+  FileOutputStream
+}
 import java.nio.file.{Files, Path}
 import java.time.Instant
 import java.util.Properties
@@ -79,8 +86,7 @@ object TextIndexArtifact:
 
   def directorySizeBytes(dir: Path): Long =
     if !Files.isDirectory(dir) then 0L
-    else
-      Files.walk(dir).iterator().asScala.filter(Files.isRegularFile(_)).map(p => Files.size(p)).sum
+    else Files.walk(dir).iterator().asScala.filter(Files.isRegularFile(_)).map(p => Files.size(p)).sum
 
   private def writeManifest(path: Path, manifest: TextBenchmarkManifest): Unit =
     val props = new Properties()

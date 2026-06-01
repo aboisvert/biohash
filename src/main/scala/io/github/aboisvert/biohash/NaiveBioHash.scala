@@ -7,20 +7,29 @@ import scala.util.Random
 
 /** Configuration for [[NaiveBioHash]] training and encoding.
   *
-  * NaiveBioHash is an ablation baseline: it uses the same Hebbian/anti-Hebbian
-  * learning rule as [[BioHash]] but projects into `k` dense hidden units (no
-  * expansive k-WTA over `m > k` units) and binarizes by activation sign.
+  * NaiveBioHash is an ablation baseline: it uses the same Hebbian/anti-Hebbian learning rule as [[BioHash]] but
+  * projects into `k` dense hidden units (no expansive k-WTA over `m > k` units) and binarizes by activation sign.
   *
-  * @param inputDim expected length of input feature vectors (paper: `d`)
-  * @param k hash length: number of dense hidden units and sign bits (paper: `k`)
-  * @param p exponent for weight normalization and scoring metric (paper: `p`; `p = 2` → dot product)
-  * @param learningRate step size for online weight updates
-  * @param epochs number of full passes over the training set
-  * @param antiWinnerRank 1-indexed rank of the anti-winner unit (paper: `r`; receives gain `-delta`)
-  * @param delta anti-Hebbian strength for the anti-winner (paper: `Δ`; `0` disables repulsive updates)
-  * @param seed random seed for weight initialization and training shuffle order
-  * @param normalizeInputs whether to L2-normalize inputs before scoring and learning
-  * @param renormalizeWeights whether to project updated weight rows back to unit p-norm
+  * @param inputDim
+  *   expected length of input feature vectors (paper: `d`)
+  * @param k
+  *   hash length: number of dense hidden units and sign bits (paper: `k`)
+  * @param p
+  *   exponent for weight normalization and scoring metric (paper: `p`; `p = 2` → dot product)
+  * @param learningRate
+  *   step size for online weight updates
+  * @param epochs
+  *   number of full passes over the training set
+  * @param antiWinnerRank
+  *   1-indexed rank of the anti-winner unit (paper: `r`; receives gain `-delta`)
+  * @param delta
+  *   anti-Hebbian strength for the anti-winner (paper: `Δ`; `0` disables repulsive updates)
+  * @param seed
+  *   random seed for weight initialization and training shuffle order
+  * @param normalizeInputs
+  *   whether to L2-normalize inputs before scoring and learning
+  * @param renormalizeWeights
+  *   whether to project updated weight rows back to unit p-norm
   */
 final case class NaiveBioHashConfig private (
     inputDim: Int,
