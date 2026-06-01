@@ -4,17 +4,21 @@ Comparison of the three numeric scoring backends in BioHash on the primary hot p
 
 ## Summary
 
-On an Apple M4 Pro (aarch64) with JDK 17 and a **3200 × 384** weight matrix (SciFact/text scale):
+On an Apple M4 Pro (aarch64) with **JDK 25** and a **3200 × 384** weight matrix (SciFact/text scale):
 
 | Backend | Latency | Speedup vs scalar |
 |---------|---------|-------------------|
-| **vector** (JDK Vector API) | **216.5 µs/op** | **2.05×** |
-| scalar (reference loops) | 442.9 µs/op | 1.00× |
-| blas (netlib-java JNIBLAS) | 545.5 µs/op | 0.81× |
+| **vector** (JDK Vector API) | **222.2 µs/op** | **2.10×** |
+| scalar (reference loops) | 466.0 µs/op | 1.00× |
+| blas (netlib-java JNIBLAS) | 557.1 µs/op | 0.84× |
 
 **Recommendation:** Keep **vector** as the runtime default (already configured in `ScoringBackend.default`). Use **scalar** for portability testing or when the incubator vector module is unavailable. Avoid **blas** in its current form — the per-row `ddot` loop adds JNI call overhead that outweighs native SIMD on this workload.
 
 End-to-end encode/query throughput also depends on TopK selection, retrieval, and parallelism; this report covers only the scoring kernel.
+
+### Prior JDK 17 run (superseded)
+
+An earlier run on Azul Zulu 17.0.18 showed the same ranking: vector (216.5 µs) > scalar (442.9 µs) > blas (545.5 µs). JDK 25 numbers are within noise of JDK 17 for vector and blas; scalar is ~5% slower on JDK 25.
 
 ## Methodology
 
@@ -50,8 +54,8 @@ _JAVA_OPTIONS='--add-modules=jdk.incubator.vector' \
 |------|-------|
 | Date | 2026-06-01 |
 | CPU | Apple M4 Pro (aarch64) |
-| JMH JVM | Azul Zulu 17.0.18+8-LTS (aarch64) |
-| Project JVM target | 17 (`project.scala`) |
+| JMH JVM | Azul Zulu 25.0.3+9-LTS (aarch64) |
+| Project JVM target | 25 (`project.scala`) |
 | Vector module | `--add-modules=jdk.incubator.vector` |
 | BLAS binding | `dev.ludovic.netlib.blas.JNIBLAS` (native JNI) |
 | netlib-java version | 3.2.0 |
@@ -69,18 +73,18 @@ All three backends are verified numerically identical by `ScoringBackendSuite`:
 
 ```
 Benchmark                     (backendName)  Mode  Cnt    Score    Error  Units
-ScoringBackendJmh.scoresGemv         scalar  avgt    5  442.856 ±  7.858  us/op
-ScoringBackendJmh.scoresGemv         vector  avgt    5  216.505 ±  8.910  us/op
-ScoringBackendJmh.scoresGemv           blas  avgt    5  545.521 ± 13.348  us/op
+ScoringBackendJmh.scoresGemv         scalar  avgt    5  466.025 ±  6.299  us/op
+ScoringBackendJmh.scoresGemv         vector  avgt    5  222.226 ± 18.774  us/op
+ScoringBackendJmh.scoresGemv           blas  avgt    5  557.106 ± 22.742  us/op
 ```
 
 ### Derived metrics
 
 | Backend | Score (µs/op) | 99.9% CI | Relative to scalar | Approx. throughput |
 |---------|---------------|----------|--------------------|--------------------|
-| vector | 216.5 ± 8.9 | [207.6, 225.4] | **2.05× faster** | ~5.7 GFLOPS |
-| scalar | 442.9 ± 7.9 | [435.0, 450.7] | baseline | ~2.8 GFLOPS |
-| blas | 545.5 ± 13.3 | [532.2, 558.9] | **1.23× slower** | ~2.3 GFLOPS |
+| vector | 222.2 ± 18.8 | [203.5, 241.0] | **2.10× faster** | ~5.5 GFLOPS |
+| scalar | 466.0 ± 6.3 | [459.7, 472.3] | baseline | ~2.6 GFLOPS |
+| blas | 557.1 ± 22.7 | [534.4, 579.8] | **1.20× slower** | ~2.2 GFLOPS |
 
 Throughput estimated as `(m × d) / latency` with `m=3200`, `d=384`.
 
@@ -100,7 +104,7 @@ Hand-written `while` loops over `Array[Double]`. For `p = 2.0`, each output row 
 
 ### vector
 
-Uses the JDK Vector API (`jdk.incubator.vector.DoubleVector`) in [`VectorApiBackendImpl`](../src/main/scala/io/github/aboisvert/biohash/VectorApiBackendImpl.scala). Processes `d` elements in SIMD lanes (`SPECIES_PREFERRED`), with a scalar tail for the remainder. Requires `--add-modules=jdk.incubator.vector` at runtime.
+Uses the JDK Vector API (`jdk.incubator.vector.DoubleVector`) in [`VectorApiBackendImpl`](../src/main/scala/io/github/aboisvert/biohash/VectorApiBackendImpl.scala). Processes `d` elements in SIMD lanes (`SPECIES_PREFERRED`), with a scalar tail for the remainder. Requires `--add-modules=jdk.incubator.vector` at runtime (JEP 508 in JDK 25).
 
 This backend wins on the benchmarked workload because it vectorizes the inner dimension loop in-process with no per-row call overhead.
 
