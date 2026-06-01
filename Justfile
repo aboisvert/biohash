@@ -22,7 +22,10 @@ microbench:
 
 # JMH microbenchmarks
 jmh *args="-i 3 -wi 3 -f1 BioHashJmh":
-    scala-cli --jmh . -- {{args}}
+    #!/usr/bin/env sh
+    set -eu
+    export _JAVA_OPTIONS="--add-modules=jdk.incubator.vector"
+    exec scala-cli --jmh . --java-opt --add-modules=jdk.incubator.vector -- {{args}}
 
 # ── Evaluation ───────────────────────────────────────────────────────────────
 

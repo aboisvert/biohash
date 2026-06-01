@@ -5,14 +5,10 @@ package io.github.aboisvert.biohash
 
 object VectorOps:
 
+  private def backend: ScoringBackend = ScoringBackend.current
+
   def dot(a: Array[Double], b: Array[Double]): Double =
-    require(a.length == b.length, "dot: dimension mismatch")
-    var sum = 0.0
-    var i = 0
-    while i < a.length do
-      sum += a(i) * b(i)
-      i += 1
-    sum
+    backend.dot(a, b)
 
   def pNorm(v: Array[Double], p: Double): Double =
     if p == 1.0 then
@@ -23,12 +19,7 @@ object VectorOps:
         i += 1
       sum
     else if p == 2.0 then
-      var sum = 0.0
-      var i = 0
-      while i < v.length do
-        sum += v(i) * v(i)
-        i += 1
-      math.sqrt(sum)
+      backend.pNormL2(v)
     else
       var sum = 0.0
       var i = 0
@@ -38,12 +29,14 @@ object VectorOps:
       math.pow(sum, 1.0 / p)
 
   def normalizeInPlace(v: Array[Double], p: Double): Unit =
-    val norm = pNorm(v, p)
-    if norm > 0.0 then
-      var i = 0
-      while i < v.length do
-        v(i) /= norm
-        i += 1
+    if p == 2.0 then backend.normalizeInPlaceL2(v)
+    else
+      val norm = pNorm(v, p)
+      if norm > 0.0 then
+        var i = 0
+        while i < v.length do
+          v(i) /= norm
+          i += 1
 
   def normalizedCopy(v: Array[Double], p: Double): Array[Double] =
     val out = v.clone()
@@ -66,4 +59,10 @@ object VectorOps:
       sum
 
   def scoresMatrix(rows: Array[Array[Double]], x: Array[Double], p: Double): Array[Double] =
-    rows.map(row => weightedScore(row, x, p))
+    val matrix = WeightMatrix.fromNested(rows)
+    val out = new Array[Double](matrix.rows)
+    backend.scoresGemv(matrix, x, p, out)
+    out
+
+  def scoresMatrix(matrix: WeightMatrix, x: Array[Double], p: Double, out: Array[Double]): Unit =
+    backend.scoresGemv(matrix, x, p, out)

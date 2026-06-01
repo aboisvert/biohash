@@ -26,10 +26,13 @@ class BioHashSuite extends munit.FunSuite:
 
   test("winner moves toward input for delta=0") {
     val config = BioHashConfig.paper(inputDim = 2, m = 2, k = 1, learningRate = 0.5, delta = 0.0, seed = 0L)
-    val bh = new BioHash(config)
-    // Initialize weights to known state
-    bh.weights(0) = Array(1.0, 0.0)
-    bh.weights(1) = Array(0.0, 1.0)
+    val bh = BioHash.fromWeights(
+      config,
+      Array(
+        Array(1.0, 0.0),
+        Array(0.0, 1.0)
+      )
+    )
     val x = Array(1.0, 0.0)
     val before = VectorOps.dot(bh.weights(0), x)
     bh.trainStep(x)

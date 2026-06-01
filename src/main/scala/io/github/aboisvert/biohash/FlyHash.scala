@@ -30,35 +30,75 @@ object FlyHashConfig:
       seed = seed
     )
 
+/** Sparse random projection row: sorted input indices and corresponding weights. */
+final case class SparseProjectionRow(indices: Array[Int], weights: Array[Double]):
+
+  def score(x: Array[Double]): Double =
+    var sum = 0.0
+    var i = 0
+    while i < indices.length do
+      sum += weights(i) * x(indices(i))
+      i += 1
+    sum
+
 /** Random-projection FlyHash baseline: no learning, k-WTA encoding. */
 final class FlyHash(val config: FlyHashConfig) extends HashEncoder:
 
   private val rng = Random(config.seed)
 
-  /** Sparse random projection: each hidden unit connects to a random subset of inputs. */
-  val weights: Array[Array[Double]] = initializeWeights()
+  /** Sparse random projection rows; each hidden unit connects to a random input subset. */
+  private var sparseRows: Array[SparseProjectionRow] = initializeSparseRows()
 
-  private def initializeWeights(): Array[Array[Double]] =
-    val numConnections = math.max(1, (config.inputDim * config.samplingRate).toInt)
-    Array.tabulate(config.m) { _ =>
-      val row = Array.fill(config.inputDim)(0.0)
-      val indices = rng.shuffle((0 until config.inputDim).toList).take(numConnections)
-      indices.foreach { i =>
-        row(i) = rng.nextGaussian()
-      }
-      VectorOps.normalizeInPlace(row, 2.0)
-      row
+  /** Dense nested weights for artifact persistence and compatibility. */
+  def weights: Array[Array[Double]] =
+    sparseRows.map { row =>
+      val dense = new Array[Double](config.inputDim)
+      var i = 0
+      while i < row.indices.length do
+        dense(row.indices(i)) = row.weights(i)
+        i += 1
+      dense
     }
 
-  def preprocess(x: Array[Double]): Array[Double] =
-    if config.normalizeInputs then VectorOps.l2NormalizeInput(x) else x
+  private val scoreBuffer = new Array[Double](config.m)
+  private val inputScratch = new Array[Double](config.inputDim)
+
+  private def initializeSparseRows(): Array[SparseProjectionRow] =
+    val numConnections = math.max(1, (config.inputDim * config.samplingRate).toInt)
+    Array.tabulate(config.m) { _ =>
+      val indices = rng.shuffle((0 until config.inputDim).toList).take(numConnections).sorted.toArray
+      val weights = Array.tabulate(indices.length) { _ =>
+        rng.nextGaussian()
+      }
+      val row = new Array[Double](weights.length)
+      System.arraycopy(weights, 0, row, 0, weights.length)
+      VectorOps.normalizeInPlace(row, 2.0)
+      SparseProjectionRow(indices, row)
+    }
+
+  private def preprocess(x: Array[Double], dest: Array[Double]): Array[Double] =
+    if config.normalizeInputs then
+      System.arraycopy(x, 0, dest, 0, x.length)
+      VectorOps.normalizeInPlace(dest, 2.0)
+      dest
+    else x
 
   def scores(x: Array[Double]): Array[Double] =
-    val input = preprocess(x)
-    VectorOps.scoresMatrix(weights, input, p = 2.0)
+    val input = preprocess(x, inputScratch)
+    val out = new Array[Double](config.m)
+    scoresInto(input, out)
+    out
+
+  def scoresInto(input: Array[Double], out: Array[Double]): Unit =
+    var row = 0
+    while row < config.m do
+      out(row) = sparseRows(row).score(input)
+      row += 1
 
   def encode(x: Array[Double]): SparseHash =
-    val topK = TopK.topKIndices(scores(x), config.k)
+    val input = preprocess(x, inputScratch)
+    scoresInto(input, scoreBuffer)
+    val topK = TopK.topKIndices(scoreBuffer, config.k)
     SparseHash.fromTopK(topK)
 
 object FlyHash:
@@ -72,6 +112,9 @@ object FlyHash:
     val fh = new FlyHash(config)
     var mu = 0
     while mu < weights.length do
-      System.arraycopy(weights(mu), 0, fh.weights(mu), 0, config.inputDim)
+      val dense = weights(mu)
+      val indices = dense.indices.filter(dense(_) != 0.0).toArray
+      val rowWeights = indices.map(dense(_))
+      fh.sparseRows(mu) = SparseProjectionRow(indices, rowWeights)
       mu += 1
     fh
