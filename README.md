@@ -54,6 +54,12 @@ scala-cli run . --main-class biohash.trainTextBenchmark -- --dataset scifact --m
 scala-cli run . --main-class biohash.queryTextBenchmark -- --dataset scifact --dense-baseline true
 ```
 
+### Incremental text index updates
+
+Text benchmark artifacts support **append**, **improve encoder**, and **consolidate** operations for growing the corpus without always re-hashing everything. See [docs/incremental-index-updates.md](docs/incremental-index-updates.md) for design rationale, on-disk format, query semantics, tradeoffs, and API details.
+
+In brief: append new documents with a frozen encoder (default, exact retrieval); optionally improve the encoder via mini-batch training into a new segment; consolidate back to one segment when a single exact hash space is needed.
+
 ## JMH Benchmarks
 
 ```sh
