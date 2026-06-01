@@ -109,6 +109,9 @@ final class NaiveBioHash(val config: NaiveBioHashConfig) extends HashEncoder:
 
   def train(data: IndexedSeq[Array[Double]]): Unit = inner.train(data)
 
+  /** Weight matrix used for artifact persistence. */
+  def savedWeights: Array[Array[Double]] = inner.weights
+
   /** Encode by sign: active where score > 0 (up to k bits; may be fewer if some scores <= 0). */
   def encode(x: Array[Double]): SparseHash =
     val s = inner.scores(x)
@@ -118,3 +121,26 @@ final class NaiveBioHash(val config: NaiveBioHashConfig) extends HashEncoder:
 object NaiveBioHash:
 
   def apply(config: NaiveBioHashConfig): NaiveBioHash = new NaiveBioHash(config)
+
+  /** Restore a trained NaiveBioHash encoder from persisted weights. */
+  def fromWeights(config: NaiveBioHashConfig, weights: Array[Array[Double]]): NaiveBioHash =
+    val innerConfig = BioHashConfig.paper(
+      inputDim = config.inputDim,
+      m = config.k,
+      k = config.k,
+      p = config.p,
+      learningRate = config.learningRate,
+      epochs = config.epochs,
+      antiWinnerRank = math.min(config.antiWinnerRank, config.k),
+      delta = config.delta,
+      seed = config.seed,
+      normalizeInputs = config.normalizeInputs,
+      renormalizeWeights = config.renormalizeWeights
+    )
+    val nb = new NaiveBioHash(config)
+    val restored = BioHash.fromWeights(innerConfig, weights)
+    var mu = 0
+    while mu < weights.length do
+      System.arraycopy(restored.weights(mu), 0, nb.savedWeights(mu), 0, config.inputDim)
+      mu += 1
+    nb

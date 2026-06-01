@@ -168,3 +168,14 @@ final class BioHash(val config: BioHashConfig) extends HashEncoder:
 object BioHash:
 
   def apply(config: BioHashConfig): BioHash = new BioHash(config)
+
+  /** Restore a trained encoder from persisted weights. */
+  def fromWeights(config: BioHashConfig, weights: Array[Array[Double]]): BioHash =
+    require(weights.length == config.m, "BioHash.fromWeights: row count must match m")
+    require(weights.forall(_.length == config.inputDim), "BioHash.fromWeights: column count must match inputDim")
+    val bh = new BioHash(config)
+    var mu = 0
+    while mu < weights.length do
+      System.arraycopy(weights(mu), 0, bh.weights(mu), 0, config.inputDim)
+      mu += 1
+    bh

@@ -61,3 +61,14 @@ final class FlyHash(val config: FlyHashConfig) extends HashEncoder:
 object FlyHash:
 
   def apply(config: FlyHashConfig): FlyHash = new FlyHash(config)
+
+  /** Restore a FlyHash encoder from persisted weights. */
+  def fromWeights(config: FlyHashConfig, weights: Array[Array[Double]]): FlyHash =
+    require(weights.length == config.m, "FlyHash.fromWeights: row count must match m")
+    require(weights.forall(_.length == config.inputDim), "FlyHash.fromWeights: column count must match inputDim")
+    val fh = new FlyHash(config)
+    var mu = 0
+    while mu < weights.length do
+      System.arraycopy(weights(mu), 0, fh.weights(mu), 0, config.inputDim)
+      mu += 1
+    fh
