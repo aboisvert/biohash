@@ -5,9 +5,13 @@ package io.github.aboisvert.biohash
 
 import io.github.aboisvert.biohash.data.TextBenchmark
 import io.github.aboisvert.biohash.eval.{SearchHit, TextIndexArtifact, TextSearchService}
+import java.io.{InputStream, OutputStream}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
+import java.util.concurrent.TimeUnit
+import scala.collection.mutable.ArrayBuffer
 import scala.io.StdIn.readLine
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success, Try, Using}
 
 object SciFactReplApp:
 
@@ -15,6 +19,10 @@ object SciFactReplApp:
   private val ProjectVenvPython = Path.of(".venv", "bin", "python")
   private val SnippetLength = 200
   private val ListQueryLimit = 20
+  private val QuitPayload = "__QUIT__"
+  private val ReadyPayload = "READY"
+  private val ErrPrefix = "ERR\t"
+  private val EmbedServerShutdownSeconds = 5
 
   @main def scifactRepl(args: String*): Unit =
     val options = Main.parseCli(args)
@@ -103,41 +111,49 @@ object SciFactReplApp:
     println("Enter a query, :help for commands. Top-k defaults to " + defaultTopK + ".")
     println()
 
-    var topK = defaultTopK
-    var running = true
-    while running do
-      val raw = readLine("query> ")
-      if raw == null then running = false
-      else
-        val line = raw.trim
-        if line.isEmpty then ()
-        else if line == ":quit" || line == ":q" then running = false
-        else if line == ":help" then printHelp()
-        else if line.startsWith(":k ") then
-          Try(line.drop(3).trim.toInt) match
-            case Success(n) if n > 0 =>
-              topK = n
-              println(s"top-k set to $n")
-            case Success(_) => println(":k requires a positive integer")
-            case Failure(_) => println(":k requires a positive integer")
-        else if line == ":list" then
-          val ids = TextBenchmark.listQueryIds(dataDir, ListQueryLimit)
-          if ids.isEmpty then println("No queries.jsonl found.")
-          else ids.foreach(id => println(s"  $id"))
-        else if line.startsWith(":use ") then
-          val queryId = line.drop(5).trim
-          queryIdToVector.get(queryId) match
-            case Some(vector) =>
-              val text = queryTexts.getOrElse(queryId, queryId)
-              println(s"Query [$queryId]: ${truncate(text, SnippetLength)}")
-              runSearch(search, passages, vector, topK)
-            case None => println(s"Unknown query id: $queryId (try :list)")
-        else
-          embedQuery(python, embedScript, manifestPath, line) match
-            case Left(message) => println(message)
-            case Right(vector) => runSearch(search, passages, vector, topK)
+    Try(QueryEmbedder.start(python, embedScript, manifestPath)) match
+      case Failure(err) =>
+        println(s"Failed to start embedding server: ${err.getMessage}")
+        println("Run: just install-python-deps")
+        println("Or:  pip install -r scripts/requirements.txt")
+        sys.exit(1)
+      case Success(embedder) =>
+        Using.resource(embedder): emb =>
+          var topK = defaultTopK
+          var running = true
+          while running do
+            val raw = readLine("query> ")
+            if raw == null then running = false
+            else
+              val line = raw.trim
+              if line.isEmpty then ()
+              else if line == ":quit" || line == ":q" then running = false
+              else if line == ":help" then printHelp()
+              else if line.startsWith(":k ") then
+                Try(line.drop(3).trim.toInt) match
+                  case Success(n) if n > 0 =>
+                    topK = n
+                    println(s"top-k set to $n")
+                  case Success(_) => println(":k requires a positive integer")
+                  case Failure(_) => println(":k requires a positive integer")
+              else if line == ":list" then
+                val ids = TextBenchmark.listQueryIds(dataDir, ListQueryLimit)
+                if ids.isEmpty then println("No queries.jsonl found.")
+                else ids.foreach(id => println(s"  $id"))
+              else if line.startsWith(":use ") then
+                val queryId = line.drop(5).trim
+                queryIdToVector.get(queryId) match
+                  case Some(vector) =>
+                    val text = queryTexts.getOrElse(queryId, queryId)
+                    println(s"Query [$queryId]: ${truncate(text, SnippetLength)}")
+                    runSearch(search, passages, vector, topK)
+                  case None => println(s"Unknown query id: $queryId (try :list)")
+              else
+                emb.embed(line) match
+                  case Left(message) => println(message)
+                  case Right(vector) => runSearch(search, passages, vector, topK)
 
-    println("Bye.")
+        println("Bye.")
 
   /** Prefer explicit --python, then project .venv, then active virtualenv, else python3. */
   private def resolvePython(explicit: Option[String]): String =
@@ -188,43 +204,97 @@ object SciFactReplApp:
   private def truncate(text: String, maxLen: Int): String =
     if text.length <= maxLen then text else text.take(maxLen - 3) + "..."
 
-  private def embedQuery(
-      python: String,
-      embedScript: Path,
-      manifestPath: Path,
-      text: String
-  ): Either[String, Array[Double]] =
-    val command = Array(
-      python,
-      embedScript.toString,
-      "--text",
-      text,
-      "--manifest",
-      manifestPath.toString
+  private def writeFrame(out: OutputStream, payload: Array[Byte]): Unit =
+    out.write(s"${payload.length}\n".getBytes(UTF_8))
+    out.write(payload)
+    out.flush()
+
+  private def readLengthLine(in: InputStream): Option[Int] =
+    val buf = ArrayBuffer[Byte]()
+    var byte = in.read()
+    while byte != -1 do
+      if byte == '\n'.toInt then
+        return Try(new String(buf.toArray, UTF_8).trim.toInt).toOption
+      buf += byte.toByte
+      byte = in.read()
+    None
+
+  private def readFrame(in: InputStream): Option[Array[Byte]] =
+    readLengthLine(in).flatMap: length =>
+      if length < 0 then None
+      else
+        val payload = in.readNBytes(length)
+        if payload.length == length then Some(payload) else None
+
+  private def parseEmbedResponse(payload: Array[Byte]): Either[String, Array[Double]] =
+    val text = new String(payload, UTF_8)
+    if text.startsWith(ErrPrefix) then Left(text.stripPrefix(ErrPrefix))
+    else
+      Try(text.split("\\s+").map(_.toDouble)) match
+        case Success(vector) => Right(vector)
+        case Failure(parseErr) => Left(s"Failed to parse embedding: ${parseErr.getMessage}")
+
+  private def drainStderr(proc: Process): Thread =
+    val thread = Thread(() =>
+      val err = proc.getErrorStream
+      val buf = new Array[Byte](4096)
+      var n = err.read(buf)
+      while n >= 0 do
+        n = err.read(buf)
     )
-    val pb = new ProcessBuilder(command*)
-    pb.directory(Path.of(".").toFile)
-    pb.redirectErrorStream(false)
-    Try:
+    thread.setDaemon(true)
+    thread.start()
+    thread
+
+  private final class QueryEmbedder private (
+      proc: Process,
+      out: OutputStream,
+      in: InputStream,
+      stderrDrainer: Thread
+  ) extends AutoCloseable:
+
+    private var closed = false
+
+    def embed(text: String): Either[String, Array[Double]] = synchronized:
+      if closed then return Left("Embedding server is closed")
+      if !proc.isAlive then return Left("Embedding server exited unexpectedly. Restart scifact-repl.")
+      Try:
+        writeFrame(out, text.getBytes(UTF_8))
+        readFrame(in).map(parseEmbedResponse).getOrElse(Left("Embedding server exited unexpectedly. Restart scifact-repl."))
+      match
+        case Success(result) => result
+        case Failure(err)    => Left(s"Embedding failed: ${err.getMessage}")
+
+    def close(): Unit = synchronized:
+      if closed then return
+      closed = true
+      Try(writeFrame(out, QuitPayload.getBytes(UTF_8)))
+      if !proc.waitFor(EmbedServerShutdownSeconds, TimeUnit.SECONDS) then proc.destroyForcibly()
+      Try(out.close())
+      Try(in.close())
+      Try(stderrDrainer.join(EmbedServerShutdownSeconds * 1000L))
+
+  private object QueryEmbedder:
+    def start(python: String, embedScript: Path, manifestPath: Path): QueryEmbedder =
+      val command = Array(
+        python,
+        embedScript.toString,
+        "--server",
+        "--manifest",
+        manifestPath.toString
+      )
+      val pb = new ProcessBuilder(command*)
+      pb.directory(Path.of(".").toFile)
       val proc = pb.start()
-      val output =
-        try scala.io.Source.fromInputStream(proc.getInputStream).mkString
-        finally proc.getInputStream.close()
-      val exit = proc.waitFor()
-      if exit != 0 then throw new RuntimeException(s"embed script (${command.mkString(" ")}) exited with code $exit: $output")
-      output
-    match
-      case Failure(err) =>
-        Left(
-          s"Embedding failed: ${err.getMessage}\n" +
-            "Run: just install-python-deps\n" +
-            "Or:  pip install -r scripts/requirements.txt"
-        )
-      case Success(output) =>
-        val line = output.trim.linesIterator.nextOption().getOrElse("")
-        if line.isEmpty then Left("Embedding produced no output")
-        else
-          Try(line.split("\\s+").map(_.toDouble)) match
-            case Success(vector) => Right(vector)
-            case Failure(parseErr) =>
-              Left(s"Failed to parse embedding: ${parseErr.getMessage}")
+      val stderrDrainer = drainStderr(proc)
+      val embedder = new QueryEmbedder(proc, proc.getOutputStream, proc.getInputStream, stderrDrainer)
+      println("Loading embedding model (one-time)...")
+      readFrame(proc.getInputStream) match
+        case Some(payload) if new String(payload, UTF_8) == ReadyPayload => embedder
+        case Some(payload) =>
+          embedder.close()
+          throw new RuntimeException(s"Unexpected startup response: ${new String(payload, UTF_8)}")
+        case None =>
+          embedder.close()
+          val exit = proc.waitFor()
+          throw new RuntimeException(s"Embed server exited during startup (code $exit)")
