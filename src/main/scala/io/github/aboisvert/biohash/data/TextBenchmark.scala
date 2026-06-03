@@ -107,6 +107,58 @@ object TextBenchmark:
         .getOrElse("unknown")
     else "unknown"
 
+  /** Display text for a corpus passage (title + body), matching prepare_beir_embeddings.py. */
+  def passageText(title: String, text: String): String =
+    val combined = s"$title\n$text".trim
+    if combined.nonEmpty then combined else text.trim
+
+  def loadCorpusPassages(dir: Path): Map[String, String] =
+    val path = dir.resolve("corpus.jsonl")
+    if !Files.exists(path) then Map.empty
+    else
+      Files.readAllLines(path).asScala.flatMap { line =>
+        val trimmed = line.trim
+        if trimmed.isEmpty then None
+        else
+          for
+            id <- parseJsonlId(trimmed)
+            title = parseJsonlStringField(trimmed, "title").getOrElse("")
+            text = parseJsonlStringField(trimmed, "text").getOrElse("")
+          yield id -> passageText(title, text)
+      }.toMap
+
+  def loadQueryTexts(dir: Path): Map[String, String] =
+    val path = dir.resolve("queries.jsonl")
+    if !Files.exists(path) then Map.empty
+    else
+      Files.readAllLines(path).asScala.flatMap { line =>
+        val trimmed = line.trim
+        if trimmed.isEmpty then None
+        else
+          for
+            id <- parseJsonlId(trimmed)
+            text <- parseJsonlStringField(trimmed, "text")
+          yield id -> text
+      }.toMap
+
+  def listQueryIds(dir: Path, limit: Int = 20): IndexedSeq[String] =
+    loadQueryTexts(dir).keys.toIndexedSeq.sorted.take(limit)
+
+  /** Extract a quoted JSON string field value without a JSON library. */
+  def parseJsonlStringField(line: String, field: String): Option[String] =
+    val key = s"\"$field\""
+    val start = line.indexOf(key)
+    if start < 0 then None
+    else
+      val colon = line.indexOf(':', start + key.length)
+      if colon < 0 then None
+      else
+        val quoteStart = line.indexOf('"', colon + 1)
+        if quoteStart < 0 then None
+        else
+          val quoteEnd = line.indexOf('"', quoteStart + 1)
+          if quoteEnd < 0 then None else Some(line.substring(quoteStart + 1, quoteEnd))
+
   /** Extract `_id` from a BEIR jsonl line without pulling in a JSON library. */
   def parseJsonlId(line: String): Option[String] =
     val key = "\"_id\""

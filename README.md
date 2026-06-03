@@ -52,6 +52,12 @@ scala-cli run . --main-class biohash.evalSyntheticText -- --method biohash --k 8
 python scripts/prepare_beir_embeddings.py --dataset scifact
 scala-cli run . --main-class biohash.trainTextBenchmark -- --dataset scifact --method biohash --k 32
 scala-cli run . --main-class biohash.queryTextBenchmark -- --dataset scifact --dense-baseline true
+
+# Interactive SciFact search (terminal REPL)
+just prepare-text-scifact
+just train-text-scifact
+just install-python-deps
+just scifact-repl
 ```
 
 For programmatic use (training encoders, building a hash index, top-k retrieval), see [docs/how-to-use.md](docs/how-to-use.md).

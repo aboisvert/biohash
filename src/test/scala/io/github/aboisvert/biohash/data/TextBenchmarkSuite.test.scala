@@ -35,6 +35,12 @@ class TextBenchmarkSuite extends munit.FunSuite:
     assertEquals(id, Some("doc-1"))
   }
 
+  test("parseJsonlStringField extracts text fields") {
+    val line = """{"_id":"doc-1","title":"T","text":"body"}"""
+    assertEquals(TextBenchmark.parseJsonlStringField(line, "title"), Some("T"))
+    assertEquals(TextBenchmark.parseJsonlStringField(line, "text"), Some("body"))
+  }
+
   test("train and query benchmark round-trip on fixture") {
     val dataset = TextBenchmark.load(fixtureDir, Some("mini"))
     val config = EvalConfig(k = 2, activity = 0.5, epochs = 2, seed = 7L, normalizeInputs = true)

@@ -175,6 +175,28 @@ val topDocIds: IndexedSeq[String] =
 
 Within a single segment, retrieval is **exact** (same encoder for query and corpus). Across segments, merge is **approximate** because hashes from different encoder snapshots are not strictly comparable. Consolidate segments when you need one globally consistent hash space — see [incremental-index-updates.md](./incremental-index-updates.md).
 
+### Interactive SciFact search (CLI REPL)
+
+After preparing embeddings and training an index (same workflow as the text benchmark):
+
+```sh
+just prepare-text-scifact
+just train-text-scifact
+just install-python-deps
+just scifact-repl
+```
+
+At the `query>` prompt, enter free-form text (embedded via `scripts/embed_query.py` using the same sentence-transformers model as data prep), or use `:use <query-id>` with a benchmark query from `queries.jsonl`. Set result count with `:k N` (default 10). Hash hyperparameters (`--k`, `--method`, etc.) must match training so the REPL loads the correct artifact.
+
+Programmatic single-query search against a trained artifact:
+
+```scala
+import io.github.aboisvert.biohash.eval.TextSearchService
+
+val service = TextSearchService.load(artifactDir)
+val hits = service.search(queryVector, k = 10) // hits: docId, hamming, rank
+```
+
 ---
 
 ## End-to-end example

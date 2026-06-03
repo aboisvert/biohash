@@ -91,27 +91,64 @@ eval-synthetic-text $method="biohash" $k="8" $epochs="3" *$extra="":
     epochs="${epochs#epochs=}"
     exec scala-cli run . --main-class io.github.aboisvert.biohash.evalSyntheticText -- --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
 
+# Create .venv and install sentence-transformers for text embed / REPL
+install-python-deps:
+    #!/usr/bin/env sh
+    set -eu
+    python3 -m venv .venv
+    .venv/bin/pip install --upgrade pip
+    .venv/bin/pip install -r scripts/requirements.txt
+    echo "Installed into .venv — scifact-repl will use .venv/bin/python automatically."
+
 # Prepare SciFact BEIR embeddings (requires Python + sentence-transformers)
 prepare-text-scifact *$extra="":
-    python scripts/prepare_beir_embeddings.py --dataset scifact ${extra:-}
+    #!/usr/bin/env sh
+    set -eu
+    # check if data already exists
+    if [ -d "data/text/scifact" ]; then
+      echo "SciFact data already exists in data/text/scifact"
+      exit 0
+    fi
+    if [ -x .venv/bin/python ]; then
+      python=.venv/bin/python
+    else
+      python=python3
+    fi
+    "$python" scripts/prepare_beir_embeddings.py --dataset scifact ${extra:-}
 
 # Train BioHash on SciFact corpus embeddings
-train-text-scifact $method="biohash" $k="32" $epochs="3" *$extra="":
+train-text-scifact $method="biohash" $hash_k="32" $epochs="3" *$extra="":
     #!/usr/bin/env sh
     set -eu
     method="${method#method=}"
-    k="${k#k=}"
+    hash_k="${hash_k#hash_k=}"
+    [ -n "$hash_k" ] || hash_k=32
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class io.github.aboisvert.biohash.trainTextBenchmark -- --dataset scifact --method "$method" --k "$k" --epochs "$epochs" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.trainTextBenchmark -- --dataset scifact --method "$method" --k "$hash_k" --epochs "$epochs" ${extra:-}
 
 # Query SciFact benchmark against trained artifact
-query-text-scifact $method="biohash" $k="32" $epochs="3" *$extra="":
+query-text-scifact $method="biohash" $hash_k="32" $epochs="3" *$extra="":
     #!/usr/bin/env sh
     set -eu
     method="${method#method=}"
-    k="${k#k=}"
+    hash_k="${hash_k#hash_k=}"
+    [ -n "$hash_k" ] || hash_k=32
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class io.github.aboisvert.biohash.queryTextBenchmark -- --dataset scifact --method "$method" --k "$k" --epochs "$epochs" --dense-baseline true ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.queryTextBenchmark -- --dataset scifact --method "$method" --k "$hash_k" --epochs "$epochs" --dense-baseline true ${extra:-}
+
+# Interactive SciFact search REPL (run `just install-python-deps` once for query embedding)
+scifact-repl $hash_k="32" *$extra="":
+    #!/usr/bin/env sh
+    set -eu
+    hash_k="${hash_k#hash_k=}"
+    [ -n "$hash_k" ] || hash_k=32
+    if [ -x .venv/bin/python ]; then
+      python=.venv/bin/python
+    else
+      python=python3
+    fi
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.scifactRepl -- \
+      --dataset scifact --k "$hash_k" --python "$python" ${extra:-}
 
 # ── Dataset downloads ────────────────────────────────────────────────────────
 

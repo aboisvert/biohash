@@ -44,6 +44,11 @@ object TextBenchmarkFixtures:
         |{"_id":"d3","title":"C","text":"beta"}
         |{"_id":"d4","title":"D","text":"gamma"}""".stripMargin
     )
+    Files.writeString(
+      dir.resolve("queries.jsonl"),
+      """{"_id":"q1","text":"find alpha topic"}
+        |{"_id":"q2","text":"find beta topic"}""".stripMargin
+    )
     dir
 
   def writeIds(path: Path, ids: IndexedSeq[String]): Unit =

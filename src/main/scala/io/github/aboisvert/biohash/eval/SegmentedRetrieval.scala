@@ -16,7 +16,7 @@ final case class SegmentRetrievalCandidate(
 /** Cross-segment retrieval helpers. Hamming distances across segments are only approximately comparable. */
 object SegmentedRetrieval:
 
-  private given candidateOrdering: Ordering[SegmentRetrievalCandidate] =
+  given candidateOrdering: Ordering[SegmentRetrievalCandidate] =
     new Ordering[SegmentRetrievalCandidate]:
       def compare(a: SegmentRetrievalCandidate, b: SegmentRetrievalCandidate): Int =
         (a.normalizedDistance, b.normalizedDistance) match

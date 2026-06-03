@@ -4,6 +4,7 @@
 .bloop/
 .cursor/
 .vscode/
+.models/
 .DS_Store
 
 target/
@@ -13,3 +14,5 @@ data/fashion-mnist/
 data/cifar-10-batches-bin/
 data/ann/
 data/text/
+
+.venv/

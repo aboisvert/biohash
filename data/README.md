@@ -75,6 +75,12 @@ just train-text-scifact
 just query-text-scifact
 ```
 
+Interactive search over the trained index (install Python deps once with `just install-python-deps`):
+
+```sh
+just scifact-repl
+```
+
 Defaults: `k=32`, `activity=0.01`, `epochs=3`, `normalizeInputs=true`, `retrievalLimit=100`.
 
 Query output reports `nDCG@10`, `MAP@100`, `Recall@10`, `Recall@100`, query latency, artifact size, and an optional dense cosine baseline on smaller corpora.

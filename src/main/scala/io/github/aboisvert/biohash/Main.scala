@@ -9,9 +9,9 @@ import java.nio.file.{Files, Path}
 
 object Main:
 
-  private final case class CliOptions(values: Map[String, String], positionals: Vector[String])
+  private[biohash] final case class CliOptions(values: Map[String, String], positionals: Vector[String])
 
-  private def parseCli(args: Seq[String]): CliOptions =
+  private[biohash] def parseCli(args: Seq[String]): CliOptions =
     var values = Map.empty[String, String]
     var positionals = Vector.empty[String]
     var i = 0
@@ -37,17 +37,21 @@ object Main:
         i += 1
     CliOptions(values, positionals)
 
-  private def requireKnown(options: CliOptions, allowed: Set[String]): Unit =
+  private[biohash] def requireKnown(options: CliOptions, allowed: Set[String]): Unit =
     val unknown = options.values.keySet.diff(allowed)
     if unknown.nonEmpty then
       throw IllegalArgumentException(s"Unknown option(s): ${unknown.toSeq.sorted.mkString(", ")}")
 
-  private def requireMaxPositionals(options: CliOptions, max: Int): Unit =
+  private[biohash] def requireMaxPositionals(options: CliOptions, max: Int): Unit =
     if options.positionals.length > max then
       throw IllegalArgumentException(s"Expected at most $max positional argument(s), got ${options.positionals.length}")
 
   private def stringOpt(options: CliOptions, name: String, default: String, positionalIndex: Int): String =
-    options.values.getOrElse(name, options.positionals.lift(positionalIndex).getOrElse(default))
+    options.values
+      .get(name)
+      .filter(_.nonEmpty)
+      .orElse(options.positionals.lift(positionalIndex).filter(_.nonEmpty))
+      .getOrElse(default)
 
   private def intOpt(options: CliOptions, name: String, default: Int, positionalIndex: Int): Int =
     stringOpt(options, name, default.toString, positionalIndex).toInt
@@ -71,7 +75,7 @@ object Main:
   @main def run(): Unit =
     println(
       "BioHash — subcommands: evalMnist, evalFashion, evalCifar, evalAnn, evalSyntheticText, " +
-        "trainTextBenchmark, queryTextBenchmark, microbench, sweepMnist"
+        "trainTextBenchmark, queryTextBenchmark, scifactRepl, microbench, sweepMnist"
     )
 
   @main def evalMnist(args: String*): Unit =
@@ -264,7 +268,7 @@ object Main:
   @main def microbench(): Unit =
     println(BenchmarkRunner.format(BenchmarkRunner.runMicrobenchmarks()))
 
-  private def textBenchmarkOptions(options: CliOptions): (String, Path, Path, EvalConfig, Int, Boolean) =
+  private[biohash] def textBenchmarkOptions(options: CliOptions): (String, Path, Path, EvalConfig, Int, Boolean) =
     requireKnown(
       options,
       Set(
@@ -286,7 +290,12 @@ object Main:
         "retrieval-limit",
         "retrievalLimit",
         "dense-baseline",
-        "denseBaseline"
+        "denseBaseline",
+        "top-k",
+        "topK",
+        "python",
+        "embed-script",
+        "embedScript"
       )
     )
     requireMaxPositionals(options, 0)
