@@ -46,6 +46,18 @@ object DenseRetrievalOracle:
   ): IndexedSeq[String] =
     retrieveTopRByCosine(query, corpus, r, normalizedCorpus).map(corpusIds(_))
 
+  /** Ground-truth top-K corpus indices for each query by cosine similarity.
+    *
+    * Convenience batch wrapper over [[retrieveTopRByCosine]] for use with [[Metrics.recallAtTopK]].
+    */
+  def groundTruthTopK(
+      queries: IndexedSeq[Array[Double]],
+      database: IndexedSeq[Array[Double]],
+      k: Int,
+      normalizedDb: IndexedSeq[Array[Double]] = IndexedSeq.empty
+  ): IndexedSeq[IndexedSeq[Int]] =
+    queries.map(q => retrieveTopRByCosine(q, database, k, normalizedDb))
+
   def nearestCosine(
       query: Array[Double],
       corpus: IndexedSeq[Array[Double]],

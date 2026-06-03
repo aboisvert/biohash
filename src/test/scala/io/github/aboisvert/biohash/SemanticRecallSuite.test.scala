@@ -64,11 +64,15 @@ class SemanticRecallSuite extends munit.FunSuite:
     val groundTruth = EmbeddingOracle.groundTruthNearest(split.queryVectors, split.databaseVectors)
     Metrics.recallAtR(retrieved, groundTruth, r)
 
-  test("BioHash recall@10 meets pinned threshold on toy ANN fixture") {
+  test("BioHash recall@10 meets threshold on toy ANN fixture") {
     val split = toySplit
     val recall = recallAt(HashMethod.BioHash, split, evalConfig, r = 10)
     // fixture: seed=42, dim=8, perClass=20, queriesPerClass=5, k=2, activity=0.1, epochs=10
-    assertEqualsDouble(recall, 0.8, 1e-9, "recall@10")
+    // Lower bound rather than exact pin: regression guard catches drops below 0.8,
+    // while improvements (recall > 0.8) correctly pass.
+    // Note: recall@10 on a ~30-item DB is a weak test; random floor = 10/30 ≈ 0.33.
+    // SemanticQualityAuditSuite exercises stronger recall@1 and multi-seed controls.
+    assert(recall >= 0.8, s"recall@10=$recall must be >= 0.8 on toy ANN fixture")
   }
 
   test("mini TEXMEX-style vectors recall@5 meets pinned threshold") {

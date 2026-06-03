@@ -283,7 +283,11 @@ class TextSemanticCorrectnessSuite extends munit.FunSuite:
     val retrieved = queryHashes.map(q => Retrieval.retrieveTopR(q, dbHashes, 1).map(_.index))
     val recall = Metrics.recallAtR(retrieved, groundTruth, r = 1)
     // fixture: seed=99, corpus=40, queries=10, dim=16, k=4, activity=0.1, epochs=10, seed=7
-    assertEqualsDouble(recall, 0.4, 1e-9, "BioHash rank-1 recall")
+    // Lower bound rather than exact pin: prevents silent regressions while allowing improvements.
+    // 0.4 is the minimum acceptable for this under-capacity config (k=4, m=40);
+    // it is deliberately below what a well-configured BioHash can achieve on this fixture.
+    // See SemanticQualityAuditSuite `investigate_0.4_pin` for capacity analysis.
+    assert(recall >= 0.4, s"BioHash rank-1 recall=$recall must be >= 0.4 on textRetrievalSplit (k=4, m=40)")
   }
 
   test("textRetrievalSplit BioHash rank-1 recall is at least FlyHash") {
@@ -322,8 +326,10 @@ class TextSemanticCorrectnessSuite extends munit.FunSuite:
 
     val bioHashRecall = rank1Recall(HashMethod.BioHash)
     val flyHashRecall = rank1Recall(HashMethod.FlyHash)
-    assertEqualsDouble(bioHashRecall, 0.4, 1e-9, "BioHash rank-1 recall")
-    assertEqualsDouble(flyHashRecall, 0.3, 1e-9, "FlyHash rank-1 recall")
+    // Lower bounds rather than exact pins: regression guards that survive improvements.
+    // These values reflect a capacity-limited config (k=4, m=40); dense gets 1.0 on the same fixture.
+    assert(bioHashRecall >= 0.4, s"BioHash rank-1 recall=$bioHashRecall must be >= 0.4 (k=4, m=40 config)")
+    assert(flyHashRecall >= 0.3, s"FlyHash rank-1 recall=$flyHashRecall must be >= 0.3 (paper baseline config)")
     assert(
       bioHashRecall >= flyHashRecall,
       s"expected BioHash rank-1 recall ($bioHashRecall) >= FlyHash ($flyHashRecall)"
