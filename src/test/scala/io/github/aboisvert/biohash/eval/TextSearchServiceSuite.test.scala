@@ -39,7 +39,7 @@ class TextSearchServiceSuite extends munit.FunSuite:
     val hits = service.search(q1Vector, k = 2)
     assertEquals(hits.length, 2)
     assertEquals(hits.head.rank, 1)
-    assert(hits.head.docId == "d1" || hits.head.docId == "d2")
+    assertEquals(hits.head.docId, "d1")
     assert(hits.forall(_.hamming >= 0))
   }
 
