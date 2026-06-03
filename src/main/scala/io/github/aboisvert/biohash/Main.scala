@@ -75,7 +75,7 @@ object Main:
   @main def run(): Unit =
     println(
       "BioHash — subcommands: evalMnist, evalFashion, evalCifar, evalAnn, evalSyntheticText, " +
-        "trainTextBenchmark, queryTextBenchmark, scifactRepl, microbench, sweepMnist"
+        "trainTextBenchmark, queryTextBenchmark, textSearchRepl, microbench, sweepMnist"
     )
 
   @main def evalMnist(args: String*): Unit =

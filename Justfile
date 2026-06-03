@@ -98,15 +98,15 @@ install-python-deps:
     python3 -m venv .venv
     .venv/bin/pip install --upgrade pip
     .venv/bin/pip install -r scripts/requirements.txt
-    echo "Installed into .venv — scifact-repl will use .venv/bin/python automatically."
+    echo "Installed into .venv — text-search-repl will use .venv/bin/python automatically."
 
-# Prepare SciFact BEIR embeddings (requires Python + sentence-transformers)
-prepare-text-scifact *$extra="":
+# Prepare text benchmark embeddings (BEIR datasets; requires Python + sentence-transformers)
+prepare-text $dataset="scifact" *$extra="":
     #!/usr/bin/env sh
     set -eu
-    # check if data already exists
-    if [ -d "data/text/scifact" ]; then
-      echo "SciFact data already exists in data/text/scifact"
+    dataset="${dataset#dataset=}"
+    if [ -d "data/text/$dataset" ] && [ -f "data/text/$dataset/corpus.fvecs" ]; then
+      echo "Text data already exists in data/text/$dataset"
       exit 0
     fi
     if [ -x .venv/bin/python ]; then
@@ -114,32 +114,49 @@ prepare-text-scifact *$extra="":
     else
       python=python3
     fi
-    "$python" scripts/prepare_beir_embeddings.py --dataset scifact ${extra:-}
+    case "$dataset" in
+      gutenberg)
+        "$python" scripts/prepare_gutenberg_embeddings.py ${extra:-}
+        ;;
+      narrativeqa|narrativeqa-literary)
+        literary=""
+        if [ "$dataset" = "narrativeqa-literary" ]; then
+          literary="--literary-only --dataset-name narrativeqa-literary"
+        fi
+        "$python" scripts/prepare_narrative_embeddings.py $literary ${extra:-}
+        ;;
+      *)
+        "$python" scripts/prepare_beir_embeddings.py --dataset "$dataset" ${extra:-}
+        ;;
+    esac
 
-# Train BioHash on SciFact corpus embeddings
-train-text-scifact $method="biohash" $hash_k="32" $epochs="3" *$extra="":
+# Train BioHash on a text corpus
+train-text $dataset="scifact" $method="biohash" $hash_k="32" $epochs="3" *$extra="":
     #!/usr/bin/env sh
     set -eu
+    dataset="${dataset#dataset=}"
     method="${method#method=}"
     hash_k="${hash_k#hash_k=}"
     [ -n "$hash_k" ] || hash_k=32
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class io.github.aboisvert.biohash.trainTextBenchmark -- --dataset scifact --method "$method" --k "$hash_k" --epochs "$epochs" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.trainTextBenchmark -- --dataset "$dataset" --method "$method" --k "$hash_k" --epochs "$epochs" ${extra:-}
 
-# Query SciFact benchmark against trained artifact
-query-text-scifact $method="biohash" $hash_k="32" $epochs="3" *$extra="":
+# Query text benchmark against trained artifact
+query-text $dataset="scifact" $method="biohash" $hash_k="32" $epochs="3" *$extra="":
     #!/usr/bin/env sh
     set -eu
+    dataset="${dataset#dataset=}"
     method="${method#method=}"
     hash_k="${hash_k#hash_k=}"
     [ -n "$hash_k" ] || hash_k=32
     epochs="${epochs#epochs=}"
-    exec scala-cli run . --main-class io.github.aboisvert.biohash.queryTextBenchmark -- --dataset scifact --method "$method" --k "$hash_k" --epochs "$epochs" --dense-baseline true ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.queryTextBenchmark -- --dataset "$dataset" --method "$method" --k "$hash_k" --epochs "$epochs" --dense-baseline true ${extra:-}
 
-# Interactive SciFact search REPL (run `just install-python-deps` once for query embedding)
-scifact-repl $hash_k="32" *$extra="":
+# Interactive text search REPL (run `just install-python-deps` once for query embedding)
+text-search-repl $dataset="scifact" $hash_k="32" *$extra="":
     #!/usr/bin/env sh
     set -eu
+    dataset="${dataset#dataset=}"
     hash_k="${hash_k#hash_k=}"
     [ -n "$hash_k" ] || hash_k=32
     if [ -x .venv/bin/python ]; then
@@ -147,8 +164,25 @@ scifact-repl $hash_k="32" *$extra="":
     else
       python=python3
     fi
-    exec scala-cli run . --main-class io.github.aboisvert.biohash.scifactRepl -- \
-      --dataset scifact --k "$hash_k" --python "$python" ${extra:-}
+    exec scala-cli run . --main-class io.github.aboisvert.biohash.textSearchRepl -- \
+      --dataset "$dataset" --k "$hash_k" --python "$python" ${extra:-}
+
+# Literary corpus shortcuts
+prepare-text-gutenberg *extra="": (prepare-text "gutenberg" extra)
+prepare-text-narrative *extra="": (prepare-text "narrativeqa-literary" extra)
+train-text-gutenberg *extra="": (train-text "gutenberg" extra)
+train-text-narrative *extra="": (train-text "narrativeqa-literary" extra)
+text-search-repl-gutenberg *extra="": (text-search-repl "gutenberg" extra)
+text-search-repl-narrative *extra="": (text-search-repl "narrativeqa-literary" extra)
+
+# Backward-compatible aliases
+text-repl $dataset="scifact" $hash_k="32" *$extra="": (text-search-repl dataset hash_k extra)
+text-repl-gutenberg *extra="": (text-search-repl "gutenberg" extra)
+text-repl-narrative *extra="": (text-search-repl "narrativeqa-literary" extra)
+prepare-text-scifact: (prepare-text "scifact")
+train-text-scifact: (train-text "scifact")
+query-text-scifact: (query-text "scifact")
+scifact-repl: (text-search-repl "scifact")
 
 # ── Dataset downloads ────────────────────────────────────────────────────────
 

@@ -83,7 +83,7 @@ object TopK:
         var worst = left
         val right = left + 1
         if right < size && worseThan(scores, heap(right), heap(worst)) then worst = right
-        if worseThan(scores, heap(parent), heap(worst)) then
+        if worseThan(scores, heap(worst), heap(parent)) then
           val tmp = heap(parent)
           heap(parent) = heap(worst)
           heap(worst) = tmp

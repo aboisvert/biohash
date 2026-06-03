@@ -113,10 +113,10 @@ object Retrieval:
           )
         then worst = right
         if worseThan(
-            heapDistances(parent),
-            heapIndices(parent),
             heapDistances(worst),
-            heapIndices(worst)
+            heapIndices(worst),
+            heapDistances(parent),
+            heapIndices(parent)
           )
         then
           swap(heapIndices, heapDistances, parent, worst)

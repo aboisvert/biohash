@@ -13,18 +13,18 @@ import scala.collection.mutable.ArrayBuffer
 import scala.io.StdIn.readLine
 import scala.util.{Failure, Success, Try, Using}
 
-object SciFactReplApp:
+object TextSearchReplApp:
 
   private val EmbedScript = Path.of("scripts", "embed_query.py")
   private val ProjectVenvPython = Path.of(".venv", "bin", "python")
-  private val SnippetLength = 200
+  private val SnippetLength = 300
   private val ListQueryLimit = 20
   private val QuitPayload = "__QUIT__"
   private val ReadyPayload = "READY"
   private val ErrPrefix = "ERR\t"
   private val EmbedServerShutdownSeconds = 5
 
-  @main def scifactRepl(args: String*): Unit =
+  @main def textSearchRepl(args: String*): Unit =
     val options = Main.parseCli(args)
     Main.requireKnown(
       options,
@@ -69,7 +69,7 @@ object SciFactReplApp:
     if !TextBenchmark.isAvailable(dataDir) then
       println(
         s"Text benchmark data not found in $dataDir.\n" +
-          s"Run `python scripts/prepare_beir_embeddings.py --dataset $dataset` first.\n" +
+          prepareHint(dataset) + "\n" +
           "See data/README.md for the expected layout."
       )
       sys.exit(1)
@@ -91,7 +91,7 @@ object SciFactReplApp:
         s"Python at $python does not have sentence-transformers.\n" +
           "Run: just install-python-deps\n" +
           "Or:  pip install -r scripts/requirements.txt\n" +
-          "Or:  just scifact-repl --python /path/to/venv/bin/python"
+          "Or:  just text-search-repl dataset=" + dataset + " --python /path/to/venv/bin/python"
       )
       sys.exit(1)
 
@@ -103,7 +103,7 @@ object SciFactReplApp:
     val manifestPath = artifactDir.resolve(TextIndexArtifact.ManifestFile)
 
     println(
-      s"SciFact search — dataset=$dataset method=${search.manifest.method} hash-k=${search.manifest.k} corpus=${search.manifest.corpusSize}"
+      s"Text search — dataset=$dataset method=${search.manifest.method} hash-k=${search.manifest.k} corpus=${search.manifest.corpusSize}"
     )
     println(s"Embedding model: ${search.manifest.embeddingModel}")
     println(s"Python: $python")
@@ -178,12 +178,21 @@ object SciFactReplApp:
       proc.waitFor() == 0
     .getOrElse(false)
 
+  private def prepareHint(dataset: String): String =
+    dataset match
+      case "gutenberg" =>
+        "Run `just prepare-text-gutenberg` or `python scripts/prepare_gutenberg_embeddings.py` first."
+      case s if s.startsWith("narrativeqa") =>
+        "Run `just prepare-text-narrative` or `python scripts/prepare_narrative_embeddings.py` first."
+      case other =>
+        s"Run `just prepare-text dataset=$other` or `python scripts/prepare_beir_embeddings.py --dataset $other` first."
+
   private def printHelp(): Unit =
     println("""Commands:
       |  :help        show this help
       |  :quit, :q    exit
       |  :k N         set number of results (top-k)
-      |  :list        list benchmark query ids
+      |  :list        list benchmark query ids (if queries.jsonl is present)
       |  :use <id>    search using a pre-embedded benchmark query
       |  <text>       embed query text and search the corpus""".stripMargin)
 
@@ -199,7 +208,7 @@ object SciFactReplApp:
 
   private def printHit(hit: SearchHit, passage: Option[String]): Unit =
     val snippet = passage.map(p => truncate(p.replace('\n', ' '), SnippetLength)).getOrElse("(no passage text)")
-    println(f"  ${hit.rank}%2d  ${hit.docId}%-12s  hamming=${hit.hamming}%3d  $snippet")
+    println(f"  ${hit.rank}%2d  ${hit.docId}%-28s  hamming=${hit.hamming}%3d  $snippet")
 
   private def truncate(text: String, maxLen: Int): String =
     if text.length <= maxLen then text else text.take(maxLen - 3) + "..."
@@ -257,10 +266,10 @@ object SciFactReplApp:
 
     def embed(text: String): Either[String, Array[Double]] = synchronized:
       if closed then return Left("Embedding server is closed")
-      if !proc.isAlive then return Left("Embedding server exited unexpectedly. Restart scifact-repl.")
+      if !proc.isAlive then return Left("Embedding server exited unexpectedly. Restart text-search-repl.")
       Try:
         writeFrame(out, text.getBytes(UTF_8))
-        readFrame(in).map(parseEmbedResponse).getOrElse(Left("Embedding server exited unexpectedly. Restart scifact-repl."))
+        readFrame(in).map(parseEmbedResponse).getOrElse(Left("Embedding server exited unexpectedly. Restart text-search-repl."))
       match
         case Success(result) => result
         case Failure(err)    => Left(s"Embedding failed: ${err.getMessage}")
